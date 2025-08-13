@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -14,8 +15,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type UploadRequest struct {
-    FileName string `json:"file_name" binding:"required"`
+type PresignedRequest struct {
+    Title string `json:"title" binding:"required"`
 }
 
 func main(){
@@ -25,16 +26,33 @@ func main(){
 
 	router.GET("/ping", func(c *gin.Context) {
 
-		result := generatePresigned(c)
-
 	    c.JSON(http.StatusUnauthorized, gin.H{
-	      "message": result,
+	      "message": "pong",
 	    })
 	 })
+
+	router.POST("/ingest/init", func(c *gin.Context) {
+		var req PresignedRequest
+
+		err := c.BindJSON(&req)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Printf("received request text: %s", req.Title)
+
+		url, expire := generatePresigned(c, req.Title)
+
+		c.JSON(http.StatusOK, gin.H{
+			"url" : url,
+			"expiresAt" : expire.UnixMilli(),
+		})
+	})
   	router.Run()
 }
 
-func generatePresigned(c *gin.Context) string {
+func generatePresigned(c *gin.Context, title string) (string, time.Time) {
 	accessKeyId, accessKeySecret := os.Getenv("S3_ACCESS_KEY_ID"), os.Getenv("S3_ACCESS_KEY_SECRET")
 	accountId := os.Getenv("S3_ACCOUNT_ID")
 	bucketName := os.Getenv("S3_BUCKET_NAME")
@@ -49,15 +67,15 @@ func generatePresigned(c *gin.Context) string {
 	})
 
 	presignClient := s3.NewPresignClient(client)
-	presignResult, err := presignClient.PresignPostObject(c, &s3.PutObjectInput{
+	presignResult, err := presignClient.PresignPutObject(c, &s3.PutObjectInput{
 		Bucket: &bucketName,
-		Key: aws.String("makan.mp4"),
-	})
+		Key: aws.String(title),
+	}, s3.WithPresignExpires(time.Minute * 15))
 
 	if err != nil {
 		log.Fatal(err , "Cant get url")
 	}
 
-	return presignResult.URL
+	return presignResult.URL, time.Now().Add(time.Minute * 15)
 
 }
