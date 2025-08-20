@@ -87,7 +87,7 @@ func (api *API) handleCreateUpload(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"videoId":   videoId,
-		"url":       result,
+		"url":       result.URL,
 		"expiresAt": time.Now().Add(validDuration).UnixMilli(),
 	})
 }
