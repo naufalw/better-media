@@ -96,3 +96,17 @@ func (s *S3Client) GeneratePresignedPut(ctx context.Context, objectKey string, v
 
 	return presignResult, nil
 }
+
+func (s *S3Client) GeneratePresignedGet(ctx context.Context, objectKey string, validDuration time.Duration) (*v4.PresignedHTTPRequest, error) {
+	presignClient := s3.NewPresignClient(s.Client)
+	presignResult, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.BucketName),
+		Key:    aws.String(objectKey),
+	}, s3.WithPresignExpires(time.Duration(validDuration.Seconds())))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return presignResult, nil
+}
