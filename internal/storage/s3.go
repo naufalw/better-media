@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
@@ -79,4 +80,18 @@ func (s *S3Client) UploadFile(ctx context.Context, localPath, objectKey string) 
 	})
 
 	return err
+}
+
+func (s *S3Client) GeneratePresignedPut(ctx context.Context, objectKey string) (*v4.PresignedHTTPRequest, error) {
+	presignClient := s3.NewPresignClient(s.Client)
+	presignResult, err := presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(s.BucketName),
+		Key:    aws.String(objectKey),
+	}, s3.WithPresignExpires(15*60))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return presignResult, nil
 }

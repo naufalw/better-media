@@ -1,17 +1,13 @@
 package main
 
 import (
+	"better-media/internal/storage"
 	"better-media/pkg/models"
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
@@ -44,11 +40,27 @@ func main() {
 		log.Printf("received request text: %s", req.Title)
 		log.Printf("received request id: %s", req.Id)
 
-		url, expire := generatePresigned(c, req.Title, req.Id)
+		s3Client, err := storage.NewS3Client(
+			os.Getenv("S3_BUCKET_NAME"),
+			os.Getenv("S3_ENDPOINT"),
+			"auto",
+		)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate presigned URL"})
+			return
+		}
+
+		result, err := s3Client.GeneratePresignedPut(c, req.Id+"/"+req.Title)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate presigned URL"})
+			return
+		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"url":       url,
-			"expiresAt": expire.UnixMilli(),
+			"url":       result.URL,
+			"expiresAt": time.Now().Add(time.Minute * 15).UnixMilli(),
 		})
 	})
 
@@ -78,41 +90,4 @@ func main() {
 	})
 
 	router.Run()
-}
-
-func generatePresigned(c *gin.Context, title string, id string) (string, time.Time) {
-	accessKeyId, accessKeySecret := os.Getenv("S3_ACCESS_KEY_ID"), os.Getenv("S3_ACCESS_KEY_SECRET")
-	bucketName := os.Getenv("S3_BUCKET_NAME")
-	endpoint := os.Getenv("S3_ENDPOINT")
-
-	isMinIO := strings.Contains(endpoint, "minio") || strings.Contains(endpoint, "localhost")
-
-	cfg, err := config.LoadDefaultConfig(c,
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKeyId, accessKeySecret, "")),
-		config.WithRegion("auto"),
-	)
-
-	if err != nil {
-		log.Print(err)
-	}
-
-	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.BaseEndpoint = aws.String(endpoint)
-		o.UsePathStyle = isMinIO
-	})
-
-	presignClient := s3.NewPresignClient(client)
-	presignResult, err := presignClient.PresignPutObject(c, &s3.PutObjectInput{
-		Bucket: &bucketName,
-		Key:    aws.String(id + "/" + title),
-	}, s3.WithPresignExpires(time.Minute*15))
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to generate presigned URL",
-		})
-	}
-
-	return presignResult.URL, time.Now().Add(time.Minute * 15)
-
 }
