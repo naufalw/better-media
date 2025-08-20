@@ -16,6 +16,8 @@ const redisAddr = "127.0.0.1:6379"
 func main() {
 	godotenv.Load()
 
+	log.Println("Starting transcoder worker...")
+
 	s3Client, err := storage.NewS3Client(
 		os.Getenv("S3_BUCKET_NAME"),
 		os.Getenv("S3_ENDPOINT"),
