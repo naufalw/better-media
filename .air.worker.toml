@@ -1,0 +1,11 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/worker ./cmd/worker"
+bin = "./tmp/worker"
+include_dir = ["cmd", "internal", "pkg"]
+exclude_file = ["_test.go"]
+
+[run]
+proxy = false
