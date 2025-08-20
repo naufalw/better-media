@@ -28,41 +28,20 @@ func main() {
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr})
 	defer asynqClient.Close()
 
-	router.POST("/ingest/init", func(c *gin.Context) {
-		var req PresignedRequest
+	s3Client, err := storage.NewS3Client(
+		os.Getenv("S3_BUCKET_NAME"),
+		os.Getenv("S3_ENDPOINT"),
+		"auto",
+	)
+	if err != nil {
+		log.Fatalf("failed to create s3 client: %v", err)
+	}
 
-		err := c.BindJSON(&req)
+	api := &API{
+		S3Client: s3Client,
+	}
 
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Printf("received request text: %s", req.Title)
-		log.Printf("received request id: %s", req.Id)
-
-		s3Client, err := storage.NewS3Client(
-			os.Getenv("S3_BUCKET_NAME"),
-			os.Getenv("S3_ENDPOINT"),
-			"auto",
-		)
-
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate presigned URL"})
-			return
-		}
-
-		result, err := s3Client.GeneratePresignedPut(c, req.Id+"/"+req.Title)
-
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate presigned URL"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"url":       result.URL,
-			"expiresAt": time.Now().Add(time.Minute * 15).UnixMilli(),
-		})
-	})
+	router.POST("/ingest/init", api.handleInitIngest)
 
 	router.POST("/ingest/enqueue", func(c *gin.Context) {
 		var req models.VideoEncodingPayload
@@ -90,4 +69,36 @@ func main() {
 	})
 
 	router.Run()
+}
+
+type API struct {
+	S3Client *storage.S3Client
+}
+
+func (api *API) handleInitIngest(c *gin.Context) {
+	var req PresignedRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
+		return
+	}
+
+	log.Printf("received request text: %s", req.Title)
+	log.Printf("received request id: %s", req.Id)
+
+	objectKey := req.Id + "/source/" + req.Title
+
+	validDuration := time.Minute * 15
+
+	result, err := api.S3Client.GeneratePresignedPut(c.Request.Context(), objectKey, validDuration)
+	if err != nil {
+		log.Printf("Error generating presigned URL: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate presigned URL"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"url":       result,
+		"expiresAt": time.Now().Add(validDuration).UnixMilli(),
+	})
 }

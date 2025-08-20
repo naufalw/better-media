@@ -70,7 +70,8 @@ func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error
 
 func (p *EncodingPipeline) Download(ctx context.Context, s3c *storage.S3Client) error {
 	log.Printf("[%s] Stage [1/5]: Downloading from S3...\n", p.Payload.VideoID)
-	objectKey := filepath.Join(p.Payload.VideoID, p.Payload.InputFile)
+	objectKey := filepath.Join(p.Payload.VideoID, "source", p.Payload.InputFile)
+	log.Printf("Attempting to download object: %s", objectKey)
 	return s3c.DownloadFile(ctx, objectKey, p.DownloadedFilePath)
 }
 
@@ -124,6 +125,11 @@ func (p *EncodingPipeline) Probe() error {
 func (p *EncodingPipeline) Encode(ctx context.Context) error {
 	log.Printf("[%s] Stage [3/5]: Encoding...\n", p.Payload.VideoID)
 
+	hlsOutputPath := filepath.Join(p.EncodedOutputPath, "hls")
+	if err := os.MkdirAll(hlsOutputPath, 0755); err != nil {
+		return fmt.Errorf("failed to create hls output dir: %w", err)
+	}
+
 	cmd := gompeg.New().
 		Input(p.DownloadedFilePath).
 		Extra("-sc_threshold", "0").
@@ -138,17 +144,22 @@ func (p *EncodingPipeline) Encode(ctx context.Context) error {
 		if res <= p.SourceInfo.Height {
 			renditionName := strconv.Itoa(res) + "p"
 
+			renditionDir := filepath.Join(hlsOutputPath, renditionName)
+			if err := os.MkdirAll(renditionDir, 0755); err != nil {
+				return fmt.Errorf("failed to create rendition dir %s: %w", renditionDir, err)
+			}
+
+			cmd.Output(filepath.Join(renditionDir, "playlist.m3u8"))
+
 			// Video codec and scaling is here, TODO: make this configurable
-			cmd.Extra("-vf", fmt.Sprintf("scale=2=-2:h=%d", res)).
+			cmd.Extra("-vf", fmt.Sprintf("scale=w=-2:h=%d", res)).
 				Extra("-c:v", "h264").
 				Extra("-profile:v", "main").
 				Extra("-crf", "23")
 			if p.SourceInfo.HasAudio {
-
 				// Audio codec and bitrate is here, TODO: make this configurable
 				cmd.Extra("-c:a", "aac").
 					Extra("-b:a", "128k")
-
 				cmd.Extra("-map", "0:v:0", "-map", "0:a:0")
 				fmt.Fprintf(&streamMapBuilder, "v:%d,a:%d,name:%s ", outputIndex, outputIndex, renditionName)
 			} else {
@@ -157,13 +168,13 @@ func (p *EncodingPipeline) Encode(ctx context.Context) error {
 				fmt.Fprintf(&streamMapBuilder, "v:%d,name:%s ", outputIndex, renditionName)
 			}
 
-			/// HLS
+			/// HLS settings for this rendition
 			cmd.Extra("-hls_time", "4").
 				Extra("-hls_playlist_type", "vod").
-				Extra("-hls_segment_filename", filepath.Join(p.EncodedOutputPath, renditionName+"_%03d.ts"))
+				Extra("-hls_segment_filename", filepath.Join(renditionDir, renditionName+"_%03d.ts"))
 
 			// Playlist for this rendition
-			cmd.Extra(filepath.Join(p.EncodedOutputPath, renditionName+".m3u8"))
+			cmd.Extra(filepath.Join(renditionDir, "playlist.m3u8"))
 
 			outputIndex++
 
@@ -176,15 +187,36 @@ func (p *EncodingPipeline) Encode(ctx context.Context) error {
 		Extra("-master_pl_name", "master.m3u8").
 		Extra("-var_stream_map", strings.TrimSpace(streamMapBuilder.String()))
 
-	cmd.Output(p.EncodedOutputPath)
+	cmd.Output(filepath.Join(hlsOutputPath, "master.m3u8"))
 
 	log.Printf("[%s] Stage [3/5]: Executing FFmpeg command: %s\n", p.Payload.VideoID, cmd.String())
 	return cmd.RunWithContext(ctx)
 }
 
-func (p *EncodingPipeline) Upload() error {
-	log.Println("Stage: Uploading...")
-	return nil
+func (p *EncodingPipeline) Upload(ctx context.Context, s3c *storage.S3Client) error {
+	log.Printf("[%s] Stage [4/5]: Uploading to S3...\n", p.Payload.VideoID)
+
+	return filepath.Walk(p.EncodedOutputPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() {
+			relativePath, err := filepath.Rel(p.EncodedOutputPath, path)
+			if err != nil {
+				return err
+			}
+
+			// 20 Aug: The object key is [videoId]/[hls]/[rendition]/file.ts
+			objectKey := filepath.Join(p.Payload.VideoID, relativePath)
+
+			log.Printf("Uploading %s to %s", path, objectKey)
+			if err := s3c.UploadFile(ctx, objectKey, path); err != nil {
+				return fmt.Errorf("failed to upload %s: %w", info.Name(), err)
+			}
+		}
+		return nil
+	})
 }
 
 func (p *EncodingPipeline) Cleanup() error {
