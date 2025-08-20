@@ -61,7 +61,7 @@ func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error
 	if err := p.Probe(); err != nil {
 		return fmt.Errorf("failed to probe file: %w", err)
 	}
-	if err := p.Encode(); err != nil {
+	if err := p.Encode(ctx); err != nil {
 		return fmt.Errorf("failed to encode file: %w", err)
 	}
 
@@ -121,7 +121,7 @@ func (p *EncodingPipeline) Probe() error {
 
 }
 
-func (p *EncodingPipeline) Encode() error {
+func (p *EncodingPipeline) Encode(ctx context.Context) error {
 	log.Printf("[%s] Stage [3/5]: Encoding...\n", p.Payload.VideoID)
 
 	cmd := gompeg.New().
@@ -179,7 +179,7 @@ func (p *EncodingPipeline) Encode() error {
 	cmd.Output(p.EncodedOutputPath)
 
 	log.Printf("[%s] Stage [3/5]: Executing FFmpeg command: %s\n", p.Payload.VideoID, cmd.String())
-	return cmd.Run()
+	return cmd.RunWithContext(ctx)
 }
 
 func (p *EncodingPipeline) Upload() error {
