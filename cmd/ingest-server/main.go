@@ -2,10 +2,10 @@ package main
 
 import (
 	"better-media/pkg/models"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -21,10 +21,6 @@ import (
 type PresignedRequest struct {
 	Title string `json:"title" binding:"required"`
 	Id    string `json:"id" binding:"required"`
-}
-
-type WorkEncodeRequest struct {
-	Id string `json:"id" binding:"required"`
 }
 
 const redisAddr = "127.0.0.1:6379"
@@ -64,7 +60,7 @@ func main() {
 			return
 		}
 
-		task, err := models.NewVideoEncodingTask(req.VideoID)
+		task, err := models.NewVideoEncodingTask(req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 			return
@@ -86,16 +82,23 @@ func main() {
 
 func generatePresigned(c *gin.Context, title string, id string) (string, time.Time) {
 	accessKeyId, accessKeySecret := os.Getenv("S3_ACCESS_KEY_ID"), os.Getenv("S3_ACCESS_KEY_SECRET")
-	accountId := os.Getenv("S3_ACCOUNT_ID")
 	bucketName := os.Getenv("S3_BUCKET_NAME")
-	cfg, err := config.LoadDefaultConfig(c, config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKeyId, accessKeySecret, "")), config.WithRegion("auto"))
+	endpoint := os.Getenv("S3_ENDPOINT")
+
+	isMinIO := strings.Contains(endpoint, "minio") || strings.Contains(endpoint, "localhost")
+
+	cfg, err := config.LoadDefaultConfig(c,
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKeyId, accessKeySecret, "")),
+		config.WithRegion("auto"),
+	)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.BaseEndpoint = aws.String(fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId))
+		o.BaseEndpoint = aws.String(endpoint)
+		o.UsePathStyle = isMinIO
 	})
 
 	presignClient := s3.NewPresignClient(client)
