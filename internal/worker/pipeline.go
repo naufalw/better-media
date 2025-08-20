@@ -3,8 +3,10 @@ package worker
 import (
 	"better-media/internal/storage"
 	"better-media/pkg/models"
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -190,7 +192,22 @@ func (p *EncodingPipeline) Encode(ctx context.Context) error {
 	cmd.Output(filepath.Join(hlsOutputPath, "master.m3u8"))
 
 	log.Printf("[%s] Stage [3/5]: Executing FFmpeg command: %s\n", p.Payload.VideoID, cmd.String())
-	return cmd.RunWithContext(ctx)
+
+	buf := &bytes.Buffer{}
+
+	cmd.PipeOutput(buf)
+
+	err := cmd.RunWithContext(ctx)
+	if err != nil {
+		log.Printf("FFmpeg command failed: %v\nOutput: %s", err,
+			buf.String())
+		return fmt.Errorf("ffmpeg command failed: %w", err)
+	}
+
+	out, _ := io.ReadAll(buf)
+	log.Printf("FFmpeg command output: %s", out)
+
+	return err
 }
 
 func (p *EncodingPipeline) Upload(ctx context.Context, s3c *storage.S3Client) error {
