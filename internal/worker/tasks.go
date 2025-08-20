@@ -30,8 +30,14 @@ func (processor *TaskProcessor) HandleVideoEncodeTask(ctx context.Context, t *as
 
 	pipeline, err := NewEncodingPipeline(payload)
 	if err != nil {
+		log.Printf("!!! PIPELINE FAILED for VideoID %s: could not create pipeline: %v", payload.VideoID, err)
 		return err
 	}
 
-	return pipeline.Run(ctx, processor.S3Client)
+	if err := pipeline.Run(ctx, processor.S3Client); err != nil {
+		log.Printf("!!! PIPELINE FAILED for VideoID %s: %v", payload.VideoID, err)
+		return err
+	}
+
+	return nil
 }
