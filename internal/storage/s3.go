@@ -2,6 +2,8 @@ package storage
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -46,6 +48,7 @@ func NewS3Client(bucketName, endpoint, region string) (*S3Client, error) {
 		Client:     client,
 		Downloader: manager.NewDownloader(client),
 		Uploader:   manager.NewUploader(client),
+
 		BucketName: bucketName,
 	}, nil
 
@@ -109,4 +112,18 @@ func (s *S3Client) GeneratePresignedGet(ctx context.Context, objectKey string, v
 	}
 
 	return presignResult, nil
+}
+
+func (s *S3Client) GetObject(ctx context.Context, key string) (io.ReadCloser, error) {
+	fmt.Println("Getting object from S3:", key)
+	fmt.Println("Bucket Name:", s.BucketName)
+	output, err := s.Client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.BucketName),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		fmt.Println("Error getting object:", err)
+		return nil, err
+	}
+	return output.Body, nil
 }
