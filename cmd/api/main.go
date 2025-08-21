@@ -3,14 +3,17 @@ package main
 import (
 	"better-media/internal/storage"
 	"better-media/pkg/models"
+	"bufio"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
@@ -27,6 +30,10 @@ const redisAddr = "127.0.0.1:6379"
 func main() {
 	godotenv.Load()
 	router := gin.Default()
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"http://localhost:3000"}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "OPTIONS"}
+	router.Use(cors.New(config))
 
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr})
 	defer asynqClient.Close()
@@ -103,7 +110,7 @@ func (api *API) handleCreateTranscodingJob(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 		return
 	}
-	info, err := api.AsynqClient.Enqueue(task, asynq.MaxRetry(3))
+	info, err := api.AsynqClient.Enqueue(task, asynq.MaxRetry(0))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to enqueue task"})
 		return
@@ -115,7 +122,7 @@ func (api *API) handleCreateTranscodingJob(c *gin.Context) {
 func (api *API) handleGetVideoDetails(c *gin.Context) {
 	videoId := c.Param("videoId")
 
-	appBaseURL := os.Getenv("APP_BASE_URL")
+	appBaseURL := "http://localhost:8080"
 	playbackUrl := fmt.Sprintf("%s/v1/videos/%s/playback/hls/master.m3u8", appBaseURL, videoId)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -130,15 +137,57 @@ func (api *API) handlePlaybackProxy(c *gin.Context) {
 	videoId := c.Param("videoId")
 	assetPath := c.Param("assetPath")
 
-	objectKey := filepath.Join(videoId, strings.TrimPrefix(assetPath, "/"))
-
-	validDuration := time.Second * 30
-
-	presignedRequest, err := api.S3Client.GeneratePresignedGet(c.Request.Context(), objectKey, validDuration)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Asset not found"})
+	if !strings.HasSuffix(assetPath, ".m3u8") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid asset type"})
 		return
 	}
 
-	c.Redirect(http.StatusFound, presignedRequest.URL)
+	keyInBucket := path.Join(videoId, strings.TrimPrefix(assetPath, "/"))
+
+	playlistContent, err := api.S3Client.GetObject(c.Request.Context(), keyInBucket)
+	if err != nil {
+		log.Printf("!!! S3 GET FAILED !!! Key: [%s], Error: [%v]", keyInBucket, err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Playlist not found"})
+		return
+	}
+	defer playlistContent.Close()
+
+	var rewrittenPlaylist strings.Builder
+	scanner := bufio.NewScanner(playlistContent)
+
+	relativeDir := path.Dir(strings.TrimPrefix(assetPath, "/"))
+	appBaseURL := "http://localhost:8080"
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.HasPrefix(line, "#") || len(strings.TrimSpace(line)) == 0 {
+			rewrittenPlaylist.WriteString(line + "\n")
+			continue
+		}
+
+		var newURL string
+		if strings.HasSuffix(line, ".m3u8") {
+			nextAssetPath := path.Join("/", relativeDir, line)
+			newURL = fmt.Sprintf("%s/v1/videos/%s/playback%s", appBaseURL, videoId, nextAssetPath)
+		} else {
+			segmentKey := path.Join(videoId, relativeDir, line)
+			presignedURL, err := api.S3Client.GeneratePresignedGet(
+				c.Request.Context(), segmentKey, 2*time.Second,
+			)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to sign URL"})
+				return
+			}
+			newURL = presignedURL.URL
+		}
+		rewrittenPlaylist.WriteString(newURL + "\n")
+	}
+
+	if err := scanner.Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read playlist"})
+		return
+	}
+
+	c.Header("Cache-Control", "max-age=300")
+	c.Data(http.StatusOK, "application/vnd.apple.mpegurl", []byte(rewrittenPlaylist.String()))
 }
