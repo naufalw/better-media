@@ -62,7 +62,7 @@ func main() {
 		v1.GET("/videos/:videoId/playback/*assetPath", api.handlePlaybackProxy)
 	}
 
-	router.Run()
+	router.Run(":8080")
 }
 
 type API struct {
@@ -137,12 +137,24 @@ func (api *API) handlePlaybackProxy(c *gin.Context) {
 	videoId := c.Param("videoId")
 	assetPath := c.Param("assetPath")
 
-	if !strings.HasSuffix(assetPath, ".m3u8") {
+	isMasterPlaylist := strings.HasSuffix(assetPath, "master.m3u8")
+
+	if !strings.HasSuffix(assetPath, ".m3u8") && !strings.HasSuffix(assetPath, ".ts") {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid asset type"})
 		return
 	}
 
 	keyInBucket := path.Join(videoId, strings.TrimPrefix(assetPath, "/"))
+
+	if strings.HasSuffix(assetPath, ".ts") {
+		presignedURL, err := api.S3Client.GeneratePresignedGet(c.Request.Context(), keyInBucket, 1*time.Hour)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to sign segment URL"})
+			return
+		}
+		c.Redirect(http.StatusTemporaryRedirect, presignedURL.URL)
+		return
+	}
 
 	playlistContent, err := api.S3Client.GetObject(c.Request.Context(), keyInBucket)
 	if err != nil {
@@ -151,6 +163,14 @@ func (api *API) handlePlaybackProxy(c *gin.Context) {
 		return
 	}
 	defer playlistContent.Close()
+
+	if isMasterPlaylist {
+
+		c.Header("Cache-Control", "max-age=2, must-revalidate")
+		log.Printf("Serving master playlist for %s with short cache time.", videoId)
+	} else {
+		c.Header("Cache-Control", "max-age=3600")
+	}
 
 	var rewrittenPlaylist strings.Builder
 	scanner := bufio.NewScanner(playlistContent)
@@ -165,21 +185,8 @@ func (api *API) handlePlaybackProxy(c *gin.Context) {
 			continue
 		}
 
-		var newURL string
-		if strings.HasSuffix(line, ".m3u8") {
-			nextAssetPath := path.Join("/", relativeDir, line)
-			newURL = fmt.Sprintf("%s/v1/videos/%s/playback%s", appBaseURL, videoId, nextAssetPath)
-		} else {
-			segmentKey := path.Join(videoId, relativeDir, line)
-			presignedURL, err := api.S3Client.GeneratePresignedGet(
-				c.Request.Context(), segmentKey, 2*time.Second,
-			)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to sign URL"})
-				return
-			}
-			newURL = presignedURL.URL
-		}
+		nextAssetPath := path.Join("/", relativeDir, line)
+		newURL := fmt.Sprintf("%s/v1/videos/%s/playback%s", appBaseURL, videoId, nextAssetPath)
 		rewrittenPlaylist.WriteString(newURL + "\n")
 	}
 
@@ -188,6 +195,6 @@ func (api *API) handlePlaybackProxy(c *gin.Context) {
 		return
 	}
 
-	c.Header("Cache-Control", "max-age=300")
-	c.Data(http.StatusOK, "application/vnd.apple.mpegurl", []byte(rewrittenPlaylist.String()))
+	c.Header("Content-Type", "application/vnd.apple.mpegurl")
+	c.String(http.StatusOK, rewrittenPlaylist.String())
 }
