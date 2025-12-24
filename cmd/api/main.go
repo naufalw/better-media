@@ -54,7 +54,17 @@ func main() {
 		log.Fatalf("failed to create s3 client: %v", err)
 	}
 
-	jobDispatcher := dispatcher.NewLocalDispatcher(s3Client, db)
+	var jobDispatcher dispatcher.JobDispatcher
+	dispatcherMode := os.Getenv("DISPATCHER_MODE")
+	if dispatcherMode == "http" {
+		workerURL := os.Getenv("WORKER_URL")
+		callbackURL := os.Getenv("CALLBACK_URL")
+		jobDispatcher = dispatcher.NewHTTPDispatcher(s3Client, db, workerURL, callbackURL)
+		log.Println("using external transcode")
+	} else {
+		jobDispatcher = dispatcher.NewLocalDispatcher(s3Client, db)
+		log.Println("using local transcode")
+	}
 	api := &API{
 		S3Client:   s3Client,
 		Dispatcher: jobDispatcher,
@@ -226,16 +236,9 @@ func (api *API) handleGetJobStatus(c *gin.Context) {
 
 // from transcoder to request presigned url for uploading
 func (api *API) handlePresignUpload(c *gin.Context) {
-	jobID := c.Param("jobId")
-
-	job, err := api.DB.GetJob(jobID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
-		return
-	}
 
 	var req struct {
-		Files []string `json:"files"` // key, such as ["hls/360p/playlist.m3u8", "hls/360p/segment000.ts"]
+		Files []string `json:"files"` // key, such as ["<videoID"/hls/360p/playlist.m3u8"]
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -246,9 +249,7 @@ func (api *API) handlePresignUpload(c *gin.Context) {
 	urls := make(map[string]string)
 
 	for _, file := range req.Files {
-		objectKey := fmt.Sprintf("%s/%s", job.VideoID, file)
-		presigned, err := api.S3Client.GeneratePresignedPut(c.Request.Context(), objectKey, time.Minute*15)
-
+		presigned, err := api.S3Client.GeneratePresignedPut(c.Request.Context(), file, time.Minute*15)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to generate presign for %s", file)})
 			return
