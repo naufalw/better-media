@@ -71,3 +71,20 @@ func getBestVideoEncoder() string {
 	return cachedEncoder
 
 }
+
+// Get the quality control flags to handle different encoder
+func getQualityArgs() []string {
+	encoder := getBestVideoEncoder()
+
+	switch encoder {
+	case "h264_videotoolbox":
+		// VideoToolbox -q:v (0-100, higher = better)
+		return []string{"-q:v", "65"}
+	case "h264_nvenc":
+		// NVENC -cq (0-51, lower = better)
+		return []string{"-cq", "23"}
+	default:
+		// libx264 -crf (0-51, lower = better)
+		return []string{"-crf", "23"}
+	}
+}

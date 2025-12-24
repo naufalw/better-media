@@ -278,17 +278,17 @@ func (p *EncodingPipeline) EncodeRendition(ctx context.Context, height int) erro
 
 	// This is hacky, but we need some way to define the bitrate
 	audioBitrate := chooseAudioBitrate(height)
-	videoBitrate := chooseVideoBitrate(height)
 
 	args := []string{
 		"-hide_banner", "-y",
 		"-i", p.StreamURL,
 		"-c:v", getBestVideoEncoder(),
-		"-b:v", videoBitrate,
 		"-profile:v", "main",
 		"-pix_fmt", "yuv420p",
 		"-vf", fmt.Sprintf("scale=-2:%d", height),
 	}
+
+	args = append(args, getQualityArgs()...)
 
 	if p.SourceInfo.HasAudio {
 		args = append(args,
