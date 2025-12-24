@@ -27,6 +27,9 @@ type PresignedRequest struct {
 
 const redisAddr = "127.0.0.1:6379"
 
+// main initializes application dependencies (environment, database, S3 client, and job dispatcher),
+// registers HTTP routes for the API (uploads, transcoding jobs, job status, video details and playback),
+// and starts the HTTP server on port 8080.
 func main() {
 	godotenv.Load()
 
