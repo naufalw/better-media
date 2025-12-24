@@ -59,6 +59,9 @@ func main() {
 	if dispatcherMode == "http" {
 		workerURL := os.Getenv("WORKER_URL")
 		callbackURL := os.Getenv("CALLBACK_URL")
+		if workerURL == "" || callbackURL == "" {
+			log.Fatalf("WORKER_URL and CALLBACK_URL must be set when DISPATCHER_MODE=http")
+		}
 		jobDispatcher = dispatcher.NewHTTPDispatcher(s3Client, db, workerURL, callbackURL)
 		log.Println("using external transcode")
 	} else {
