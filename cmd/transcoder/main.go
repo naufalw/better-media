@@ -1,7 +1,10 @@
-package transcoder
+package main
 
 import (
+	"better-media/internal/transcoder"
+	"better-media/internal/uploader"
 	"better-media/pkg/models"
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -43,12 +46,27 @@ func handleTranscode(c *gin.Context) {
 }
 
 func processTranscode(req models.TranscodeRequest) {
-	// TODO: Implement
-	// 1. Download source from req.DownloadURL
-	// 2. Run encoding pipeline
-	// 3. Request presigned PUT URLs via req.CallbackURL
-	// 4. Upload files
-	// 5. Report completion
 
 	log.Printf("[%s] Processing started...", req.JobID)
+
+	payload := models.VideoEncodingPayload{
+		VideoID:     req.VideoID,
+		InputFile:   "", // we are using the url directly
+		Resolutions: req.Resolutions,
+	}
+
+	pipeline, err := transcoder.NewEncodingPipeline(payload)
+	if err != nil {
+		log.Printf("[%s] Failed to create pipeline: %v", req.JobID, err)
+		return
+	}
+
+	pipeline.Uploader = uploader.NewRemoteUploader(req.CallbackURL, req.JobID)
+	pipeline.StreamURL = req.DownloadURL
+
+	if err := pipeline.Run(context.Background(), nil); err != nil {
+		pipeline.Uploader.NotifyFailed(err.Error())
+		return
+	}
+	pipeline.Uploader.NotifyComplete()
 }
