@@ -13,7 +13,7 @@ const (
 type VideoEncodingPayload struct {
 	VideoID      string `json:"video_id" binding:"required"`
 	InputFile    string `json:"input_file" binding:"required"`
-	TargetFormat string `json:"target_format" binding:"required"`
+	TargetFormat string `json:"target_format"`
 	Resolutions  []int  `json:"resolutions" binding:"required"`
 }
 
