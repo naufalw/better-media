@@ -71,10 +71,16 @@ func (u *RemoteUploader) Upload(ctx context.Context, localPath, objectKey string
 	}
 	defer file.Close()
 
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat file: %w", err)
+	}
+
 	uploadReq, err := http.NewRequestWithContext(ctx, "PUT", uploadURL, file)
 	if err != nil {
 		return fmt.Errorf("failed to create upload request: %w", err)
 	}
+	uploadReq.ContentLength = fileInfo.Size()
 
 	uploadResp, err := u.httpClient.Do(uploadReq)
 	if err != nil {
