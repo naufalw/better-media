@@ -67,12 +67,14 @@ func NewEncodingPipeline(p models.VideoEncodingPayload) (*EncodingPipeline, erro
 func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error {
 	log.Println("Stage: Run...")
 
-	objectKey := filepath.Join(p.Payload.VideoID, "source", p.Payload.InputFile)
-	presignedGet, err := s3c.GeneratePresignedGet(ctx, objectKey, time.Hour)
-	if err != nil {
-		return fmt.Errorf("failed to generate presigned URL: %w", err)
+	if p.StreamURL == "" {
+		objectKey := filepath.Join(p.Payload.VideoID, "source", p.Payload.InputFile)
+		presignedGet, err := s3c.GeneratePresignedGet(ctx, objectKey, time.Hour)
+		if err != nil {
+			return fmt.Errorf("failed to generate presigned URL: %w", err)
+		}
+		p.StreamURL = presignedGet.URL
 	}
-	p.StreamURL = presignedGet.URL
 
 	defer p.Cleanup()
 
