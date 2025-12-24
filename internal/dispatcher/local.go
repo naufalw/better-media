@@ -4,6 +4,7 @@ import (
 	"better-media/internal/database"
 	"better-media/internal/storage"
 	"better-media/internal/transcoder"
+	"better-media/internal/uploader"
 	"better-media/pkg/models"
 	"context"
 	"log"
@@ -49,12 +50,7 @@ func (d *LocalDispatcher) Dispatch(ctx context.Context, payload models.VideoEnco
 			return
 		}
 
-		pipeline.OnFirstRenditionReady = func() {
-			if err := d.db.UpdateJobStatus(jobID, "playable", nil); err != nil {
-				log.Printf("[%s] Failed to update job status to playable: %v", jobID, err)
-			}
-			log.Printf("[%s] First rendition ready - video is now playable", jobID)
-		}
+		pipeline.Uploader = uploader.NewLocalUploader(d.s3Client, d.db, jobID)
 
 		if err := pipeline.Run(context.Background(), d.s3Client); err != nil {
 			errStr := err.Error()
