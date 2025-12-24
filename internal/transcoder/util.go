@@ -4,38 +4,27 @@
 package transcoder
 
 import (
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
-func chooseVideoBitrate(h int) string {
-	switch {
-	case h >= 1080:
-		return "5000k"
-	case h >= 720:
-		return "2800k"
-	case h >= 480:
-		return "1400k"
-	case h >= 360:
-		return "800k"
-	default:
-		return "400k"
+func calculateRenditionBandwidth(renditionDir string, durationSec float64) int {
+	if durationSec <= 0 {
+		return 0
 	}
-}
 
-func getBandwidthForHeight(h int) int {
-	switch {
-	case h >= 1080:
-		return 5000000
-	case h >= 720:
-		return 2800000
-	case h >= 480:
-		return 1400000
-	case h >= 360:
-		return 800000
-	default:
-		return 400000
-	}
+	var totalBytes int64
+	filepath.Walk(renditionDir, func(path string, info os.FileInfo, err error) error {
+		if err == nil && !info.IsDir() {
+			totalBytes += info.Size()
+		}
+		return nil
+	})
+
+	// Bandwidth = (bytes * 8 bits) / duration in seconds
+	return int(float64(totalBytes*8) / durationSec)
 }
 
 func chooseAudioBitrate(h int) string {

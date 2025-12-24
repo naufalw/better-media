@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,6 +34,7 @@ type EncodingPipeline struct {
 		Width    int
 		Height   int
 		HasAudio bool
+		Duration float64
 	}
 
 	TempDir            string
@@ -97,13 +99,6 @@ func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error
 	return nil
 }
 
-func (p *EncodingPipeline) Download(ctx context.Context, s3c *storage.S3Client) error {
-	log.Printf("[%s] Stage [1/5]: Downloading from S3...\n", p.Payload.VideoID)
-	objectKey := filepath.Join(p.Payload.VideoID, "source", p.Payload.InputFile)
-	log.Printf("[%s] Attempting to download object: %s", p.Payload.VideoID, objectKey)
-	return s3c.DownloadFile(ctx, objectKey, p.DownloadedFilePath)
-}
-
 func (p *EncodingPipeline) Probe() error {
 	log.Printf("[%s] Stage [2/5]: Probing input file...\n", p.Payload.VideoID)
 
@@ -116,6 +111,15 @@ func (p *EncodingPipeline) Probe() error {
 	streams, ok := data["streams"].([]any)
 	if !ok {
 		return fmt.Errorf("could not find streams in ffprobe output")
+	}
+
+	// getting the duration
+	if formatMap, ok := data["format"].(map[string]any); ok {
+		if durationStr, ok := formatMap["duration"].(string); ok {
+			if duration, err := strconv.ParseFloat(durationStr, 64); err == nil {
+				p.SourceInfo.Duration = duration
+			}
+		}
 	}
 
 	foundVideo := false
@@ -185,7 +189,7 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 	var mu sync.Mutex     // this is for master playlist updating mutex
 
 	// limit the number of concurrent transcoding
-	maxConcurrent := 2
+	maxConcurrent := 1
 	sem := make(chan struct{}, maxConcurrent)
 
 	var completedRenditions []completedRendition
@@ -215,6 +219,11 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 				encodingErrors = append(encodingErrors, fmt.Errorf("failed on %dp: %w", height, err))
 				mu.Unlock()
 				return
+			} else {
+				renditionDir := filepath.Join(p.EncodedOutputPath, "hls", fmt.Sprintf("%dp", height))
+				if err := p.uploadRendition(ctx, renditionDir, height); err != nil {
+					log.Printf("[%s] ERROR uploading %dp rendition: %v", p.Payload.VideoID, height, err)
+				}
 			}
 
 			mu.Lock()
@@ -225,10 +234,13 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 				scaledWidth++
 			}
 
+			renditionDir := filepath.Join(p.EncodedOutputPath, "hls", fmt.Sprintf("%dp", height))
+			bw := calculateRenditionBandwidth(renditionDir, p.SourceInfo.Duration)
+
 			completedRenditions = append(completedRenditions, completedRendition{
 				Height:       height,
 				Width:        scaledWidth,
-				Bandwidth:    getBandwidthForHeight(height),
+				Bandwidth:    bw,
 				PlaylistPath: fmt.Sprintf("%dp/playlist.m3u8", height),
 			})
 
@@ -254,6 +266,20 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 	log.Printf("[%s] Stage [3/5]: All encoding tasks finished.\n", p.Payload.VideoID)
 	return nil
 
+}
+
+func (p *EncodingPipeline) uploadRendition(ctx context.Context, renditionDir string, height int) error {
+	return filepath.Walk(renditionDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+
+		relativePath, _ := filepath.Rel(p.EncodedOutputPath, path)
+		objectKey := filepath.Join(p.Payload.VideoID, relativePath)
+
+		log.Printf("Uploading %s to %s", path, objectKey)
+		return p.Uploader.Upload(ctx, path, objectKey)
+	})
 }
 
 func (p *EncodingPipeline) Upload(ctx context.Context) error {
