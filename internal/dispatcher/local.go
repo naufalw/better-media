@@ -16,6 +16,7 @@ type LocalDispatcher struct {
 	db       *database.DB
 }
 
+// NewLocalDispatcher constructs a LocalDispatcher configured with the provided S3 client and database.
 func NewLocalDispatcher(s3Client *storage.S3Client, db *database.DB) *LocalDispatcher {
 	return &LocalDispatcher{
 		s3Client,
