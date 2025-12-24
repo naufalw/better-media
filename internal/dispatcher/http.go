@@ -1,6 +1,7 @@
 package dispatcher
 
 import (
+	"better-media/internal/database"
 	"better-media/internal/storage"
 	"better-media/pkg/models"
 	"bytes"
@@ -18,20 +19,28 @@ type HTTPDispatcher struct {
 	httpClient  *http.Client
 	s3Client    *storage.S3Client
 	callbackUrl string
+	db          *database.DB
 }
 
-func NewHTTPDispatcher(s3Client *storage.S3Client, workerURL, callbackURL string) *HTTPDispatcher {
+func NewHTTPDispatcher(s3Client *storage.S3Client, db *database.DB, workerURL, callbackURL string) *HTTPDispatcher {
 
 	return &HTTPDispatcher{
 		workerUrl:   workerURL,
 		httpClient:  &http.Client{},
 		s3Client:    s3Client,
 		callbackUrl: callbackURL,
+		db:          db,
 	}
 }
 
 func (d *HTTPDispatcher) Dispatch(ctx context.Context, payload models.VideoEncodingPayload) (string, error) {
 	jobID := uuid.New().String()
+
+	if err := d.db.CreateJob(jobID, payload.VideoID); err != nil {
+		return "", fmt.Errorf("failed to create job: %w", err)
+	}
+
+	d.db.UpdateJobStatus(jobID, "processing", nil)
 
 	validDuration := time.Minute * 15
 

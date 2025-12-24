@@ -2,6 +2,7 @@ package transcoder
 
 import (
 	"better-media/internal/storage"
+	"better-media/internal/uploader"
 	"better-media/pkg/models"
 	"bytes"
 	"context"
@@ -40,7 +41,8 @@ type EncodingPipeline struct {
 
 	StreamURL string
 
-	OnFirstRenditionReady func()
+	// to unify the upolading process between monolith and distributed
+	Uploader uploader.Uploader
 }
 
 // NewEncodingPipeline creates a temporary working directory for the given VideoEncodingPayload and returns
@@ -65,12 +67,17 @@ func NewEncodingPipeline(p models.VideoEncodingPayload) (*EncodingPipeline, erro
 func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error {
 	log.Println("Stage: Run...")
 
-	objectKey := filepath.Join(p.Payload.VideoID, "source", p.Payload.InputFile)
-	presignedGet, err := s3c.GeneratePresignedGet(ctx, objectKey, time.Hour)
-	if err != nil {
-		return fmt.Errorf("failed to generate presigned URL: %w", err)
+	if p.StreamURL == "" {
+		if s3c == nil {
+			return fmt.Errorf("StreamURL is empty and no S3 client provided")
+		}
+		objectKey := filepath.Join(p.Payload.VideoID, "source", p.Payload.InputFile)
+		presignedGet, err := s3c.GeneratePresignedGet(ctx, objectKey, time.Hour)
+		if err != nil {
+			return fmt.Errorf("failed to generate presigned URL: %w", err)
+		}
+		p.StreamURL = presignedGet.URL
 	}
-	p.StreamURL = presignedGet.URL
 
 	defer p.Cleanup()
 
@@ -81,7 +88,7 @@ func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error
 		return fmt.Errorf("failed to encode file: %w", err)
 	}
 
-	if err := p.Upload(ctx, s3c); err != nil {
+	if err := p.Upload(ctx); err != nil {
 		return fmt.Errorf("failed to upload encoded files: %w", err)
 	}
 
@@ -225,14 +232,14 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 				PlaylistPath: fmt.Sprintf("%dp/playlist.m3u8", height),
 			})
 
-			if err := p.updateMasterPlaylist(ctx, s3c, hlsBase, completedRenditions); err != nil {
+			if err := p.updateMasterPlaylist(ctx, hlsBase, completedRenditions); err != nil {
 				log.Printf("[%s] ERROR updating master playlist after %dp rendition: %v\n", p.Payload.VideoID, height, err)
 				encodingErrors = append(encodingErrors, fmt.Errorf("failed to update master playlist for %dp: %w", height, err))
 			}
 
-			if !firstRenditionNotified && p.OnFirstRenditionReady != nil {
+			if !firstRenditionNotified && p.Uploader != nil {
 				firstRenditionNotified = true
-				p.OnFirstRenditionReady()
+				p.Uploader.NotifyPlayable()
 			}
 		}(height)
 
@@ -249,7 +256,7 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 
 }
 
-func (p *EncodingPipeline) Upload(ctx context.Context, s3c *storage.S3Client) error {
+func (p *EncodingPipeline) Upload(ctx context.Context) error {
 	log.Printf("[%s] Stage [4/5]: Uploading to S3...\n", p.Payload.VideoID)
 
 	return filepath.Walk(p.EncodedOutputPath, func(path string, info os.FileInfo, err error) error {
@@ -268,7 +275,7 @@ func (p *EncodingPipeline) Upload(ctx context.Context, s3c *storage.S3Client) er
 			objectKey := filepath.Join(p.Payload.VideoID, relativePath)
 
 			log.Printf("Uploading %s to %s", path, objectKey)
-			if err := s3c.UploadFile(ctx, path, objectKey); err != nil {
+			if err := p.Uploader.Upload(ctx, path, objectKey); err != nil {
 				return fmt.Errorf("failed to upload %s: %w", info.Name(), err)
 			}
 		}
@@ -330,7 +337,7 @@ func (p *EncodingPipeline) EncodeRendition(ctx context.Context, height int) erro
 
 }
 
-func (p *EncodingPipeline) updateMasterPlaylist(ctx context.Context, s3c *storage.S3Client, hlsBaseDir string, renditions []completedRendition) error {
+func (p *EncodingPipeline) updateMasterPlaylist(ctx context.Context, hlsBaseDir string, renditions []completedRendition) error {
 	masterPlaylistPath := filepath.Join(hlsBaseDir, "master.m3u8")
 
 	log.Printf("[%s] Updating master playlist at %s\n", p.Payload.VideoID, masterPlaylistPath)
@@ -353,7 +360,7 @@ func (p *EncodingPipeline) updateMasterPlaylist(ctx context.Context, s3c *storag
 	}
 
 	objectKey := filepath.Join(p.Payload.VideoID, "hls", "master.m3u8")
-	if err := s3c.UploadFile(ctx, masterPlaylistPath, objectKey); err != nil {
+	if err := p.Uploader.Upload(ctx, masterPlaylistPath, objectKey); err != nil {
 		return fmt.Errorf("failed to upload master playlist: %w", err)
 	}
 
