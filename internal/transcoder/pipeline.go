@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	fluentffmpeg "github.com/modfy/fluent-ffmpeg"
 )
@@ -36,6 +37,8 @@ type EncodingPipeline struct {
 	TempDir            string
 	DownloadedFilePath string
 	EncodedOutputPath  string
+
+	StreamURL string
 }
 
 func NewEncodingPipeline(p models.VideoEncodingPayload) (*EncodingPipeline, error) {
@@ -55,11 +58,18 @@ func NewEncodingPipeline(p models.VideoEncodingPayload) (*EncodingPipeline, erro
 func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error {
 	log.Println("Stage: Run...")
 
+	objectKey := filepath.Join(p.Payload.VideoID, "source", p.Payload.InputFile)
+	presignedGet, err := s3c.GeneratePresignedGet(ctx, objectKey, time.Hour)
+	if err != nil {
+		return fmt.Errorf("failed to generate presigned URL: %w", err)
+	}
+	p.StreamURL = presignedGet.URL
+
 	defer p.Cleanup()
 
-	if err := p.Download(ctx, s3c); err != nil {
-		return fmt.Errorf("failed to download file: %w", err)
-	}
+	// if err := p.Download(ctx, s3c); err != nil {
+	// 	return fmt.Errorf("failed to download file: %w", err)
+	// }
 
 	if err := p.Probe(); err != nil {
 		return fmt.Errorf("failed to probe file: %w", err)
@@ -87,7 +97,7 @@ func (p *EncodingPipeline) Download(ctx context.Context, s3c *storage.S3Client) 
 func (p *EncodingPipeline) Probe() error {
 	log.Printf("[%s] Stage [2/5]: Probing input file...\n", p.Payload.VideoID)
 
-	data, err := fluentffmpeg.Probe(p.DownloadedFilePath)
+	data, err := fluentffmpeg.Probe(p.StreamURL)
 
 	if err != nil {
 		return fmt.Errorf("fluentffmpeg.Probe failed: %w", err)
@@ -265,7 +275,7 @@ func (p *EncodingPipeline) EncodeRendition(ctx context.Context, height int) erro
 
 	args := []string{
 		"-hide_banner", "-y",
-		"-i", p.DownloadedFilePath,
+		"-i", p.StreamURL,
 		"-c:v", "h264",
 		"-b:v", videoBitrate,
 		"-profile:v", "main",
