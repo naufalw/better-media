@@ -175,6 +175,10 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 	var wg sync.WaitGroup // this is for encoding goroutines
 	var mu sync.Mutex     // this is for master playlist updating mutex
 
+	// limit the number of concurrent transcoding
+	maxConcurrent := 2
+	sem := make(chan struct{}, maxConcurrent)
+
 	var completedRenditions []completedRendition
 	var encodingErrors []error
 
@@ -189,6 +193,8 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 		wg.Add(1)
 
 		go func(height int) {
+			sem <- struct{}{}
+			defer func() { <-sem }()
 			defer wg.Done()
 
 			err := p.EncodeRendition(ctx, height)
