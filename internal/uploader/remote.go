@@ -107,12 +107,26 @@ func (u *RemoteUploader) updateStatus(status string, errMsg *string) error {
 		body["error"] = *errMsg
 	}
 
-	reqBody, _ := json.Marshal(body)
-	resp, err := u.httpClient.Post(statusURL, "application/json", bytes.NewReader(reqBody))
+	reqBody, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("failed to marshal status update: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", statusURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return fmt.Errorf("failed to create status request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := u.httpClient.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("status update failed with status %d", resp.StatusCode)
+	}
 
 	return nil
 }
