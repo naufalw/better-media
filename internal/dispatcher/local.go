@@ -50,7 +50,9 @@ func (d *LocalDispatcher) Dispatch(ctx context.Context, payload models.VideoEnco
 		}
 
 		pipeline.OnFirstRenditionReady = func() {
-			d.db.UpdateJobStatus(jobID, "playable", nil)
+			if err := d.db.UpdateJobStatus(jobID, "playable", nil); err != nil {
+				log.Printf("[%s] Failed to update job status to playable: %v", jobID, err)
+			}
 			log.Printf("[%s] First rendition ready - video is now playable", jobID)
 		}
 
