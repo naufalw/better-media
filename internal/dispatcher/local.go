@@ -49,6 +49,11 @@ func (d *LocalDispatcher) Dispatch(ctx context.Context, payload models.VideoEnco
 			return
 		}
 
+		pipeline.OnFirstRenditionReady = func() {
+			d.db.UpdateJobStatus(jobID, "playable", nil)
+			log.Printf("[%s] First rendition ready - video is now playable", jobID)
+		}
+
 		if err := pipeline.Run(context.Background(), d.s3Client); err != nil {
 			errStr := err.Error()
 			log.Printf("[%s] Pipeline failed: %v", jobID, err)

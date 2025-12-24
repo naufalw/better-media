@@ -39,13 +39,15 @@ type EncodingPipeline struct {
 	EncodedOutputPath  string
 
 	StreamURL string
+
+	OnFirstRenditionReady func()
 }
 
 // NewEncodingPipeline creates a temporary working directory for the given VideoEncodingPayload and returns
 // an initialized EncodingPipeline configured to use that directory.
-// The returned pipeline has TempDir set to the created directory, DownloadedFilePath set to
-// "<TempDir>/<InputFile>", and EncodedOutputPath set to "<TempDir>/encoded".
-// An error is returned if the temporary directory cannot be created.
+// - TempDir set to the created directory
+// - DownloadedFilePath set to "<TempDir>/<InputFile>"
+// - EncodedOutputPath set to "<TempDir>/encoded".
 func NewEncodingPipeline(p models.VideoEncodingPayload) (*EncodingPipeline, error) {
 	tempDir, err := os.MkdirTemp("", "media-*-"+p.VideoID)
 	if err != nil {
@@ -181,6 +183,7 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 
 	var completedRenditions []completedRendition
 	var encodingErrors []error
+	var firstRenditionNotified bool
 
 	hlsBase := filepath.Join(p.EncodedOutputPath, "hls")
 	if err := os.MkdirAll(hlsBase, 0o755); err != nil {
@@ -225,6 +228,11 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 			if err := p.updateMasterPlaylist(ctx, s3c, hlsBase, completedRenditions); err != nil {
 				log.Printf("[%s] ERROR updating master playlist after %dp rendition: %v\n", p.Payload.VideoID, height, err)
 				encodingErrors = append(encodingErrors, fmt.Errorf("failed to update master playlist for %dp: %w", height, err))
+			}
+
+			if !firstRenditionNotified && p.OnFirstRenditionReady != nil {
+				firstRenditionNotified = true
+				p.OnFirstRenditionReady()
 			}
 		}(height)
 
