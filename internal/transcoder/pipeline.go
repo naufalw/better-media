@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	fluentffmpeg "github.com/modfy/fluent-ffmpeg"
 )
@@ -36,8 +37,15 @@ type EncodingPipeline struct {
 	TempDir            string
 	DownloadedFilePath string
 	EncodedOutputPath  string
+
+	StreamURL string
 }
 
+// NewEncodingPipeline creates a temporary working directory for the given VideoEncodingPayload and returns
+// an initialized EncodingPipeline configured to use that directory.
+// The returned pipeline has TempDir set to the created directory, DownloadedFilePath set to
+// "<TempDir>/<InputFile>", and EncodedOutputPath set to "<TempDir>/encoded".
+// An error is returned if the temporary directory cannot be created.
 func NewEncodingPipeline(p models.VideoEncodingPayload) (*EncodingPipeline, error) {
 	tempDir, err := os.MkdirTemp("", "media-*-"+p.VideoID)
 	if err != nil {
@@ -55,11 +63,18 @@ func NewEncodingPipeline(p models.VideoEncodingPayload) (*EncodingPipeline, erro
 func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error {
 	log.Println("Stage: Run...")
 
+	objectKey := filepath.Join(p.Payload.VideoID, "source", p.Payload.InputFile)
+	presignedGet, err := s3c.GeneratePresignedGet(ctx, objectKey, time.Hour)
+	if err != nil {
+		return fmt.Errorf("failed to generate presigned URL: %w", err)
+	}
+	p.StreamURL = presignedGet.URL
+
 	defer p.Cleanup()
 
-	if err := p.Download(ctx, s3c); err != nil {
-		return fmt.Errorf("failed to download file: %w", err)
-	}
+	// if err := p.Download(ctx, s3c); err != nil {
+	// 	return fmt.Errorf("failed to download file: %w", err)
+	// }
 
 	if err := p.Probe(); err != nil {
 		return fmt.Errorf("failed to probe file: %w", err)
@@ -87,7 +102,7 @@ func (p *EncodingPipeline) Download(ctx context.Context, s3c *storage.S3Client) 
 func (p *EncodingPipeline) Probe() error {
 	log.Printf("[%s] Stage [2/5]: Probing input file...\n", p.Payload.VideoID)
 
-	data, err := fluentffmpeg.Probe(p.DownloadedFilePath)
+	data, err := fluentffmpeg.Probe(p.StreamURL)
 
 	if err != nil {
 		return fmt.Errorf("fluentffmpeg.Probe failed: %w", err)
@@ -133,6 +148,7 @@ func (p *EncodingPipeline) Probe() error {
 }
 
 type completedRendition struct {
+	Width        int
 	Height       int
 	Bandwidth    int
 	PlaylistPath string
@@ -192,8 +208,14 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 			mu.Lock()
 			defer mu.Unlock()
 
+			scaledWidth := (p.SourceInfo.Width * height) / p.SourceInfo.Height
+			if scaledWidth%2 != 0 {
+				scaledWidth++
+			}
+
 			completedRenditions = append(completedRenditions, completedRendition{
 				Height:       height,
+				Width:        scaledWidth,
 				Bandwidth:    getBandwidthForHeight(height),
 				PlaylistPath: fmt.Sprintf("%dp/playlist.m3u8", height),
 			})
@@ -258,7 +280,7 @@ func (p *EncodingPipeline) EncodeRendition(ctx context.Context, height int) erro
 
 	args := []string{
 		"-hide_banner", "-y",
-		"-i", p.DownloadedFilePath,
+		"-i", p.StreamURL,
 		"-c:v", "h264",
 		"-b:v", videoBitrate,
 		"-profile:v", "main",
@@ -312,9 +334,7 @@ func (p *EncodingPipeline) updateMasterPlaylist(ctx context.Context, s3c *storag
 	content.WriteString("#EXT-X-VERSION:3\n")
 
 	for _, r := range renditions {
-		// TODO: HERE IS STILL USING HARDCODED 16:9 RATIO
-		width := (r.Height * 16) / 9
-		content.WriteString(fmt.Sprintf("#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%dx%d\n", r.Bandwidth, width, r.Height))
+		content.WriteString(fmt.Sprintf("#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%dx%d\n", r.Bandwidth, r.Width, r.Height))
 		content.WriteString(r.PlaylistPath + "\n")
 	}
 
