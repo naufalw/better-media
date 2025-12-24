@@ -67,10 +67,6 @@ func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error
 
 	defer p.Cleanup()
 
-	// if err := p.Download(ctx, s3c); err != nil {
-	// 	return fmt.Errorf("failed to download file: %w", err)
-	// }
-
 	if err := p.Probe(); err != nil {
 		return fmt.Errorf("failed to probe file: %w", err)
 	}
@@ -276,7 +272,7 @@ func (p *EncodingPipeline) EncodeRendition(ctx context.Context, height int) erro
 	args := []string{
 		"-hide_banner", "-y",
 		"-i", p.StreamURL,
-		"-c:v", "h264",
+		"-c:v", getBestVideoEncoder(),
 		"-b:v", videoBitrate,
 		"-profile:v", "main",
 		"-pix_fmt", "yuv420p",
