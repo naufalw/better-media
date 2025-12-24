@@ -51,10 +51,11 @@ func main() {
 		log.Fatalf("failed to create s3 client: %v", err)
 	}
 
-	jobDispatcher := dispatcher.NewLocalDispatcher(s3Client)
+	jobDispatcher := dispatcher.NewLocalDispatcher(s3Client, db)
 	api := &API{
 		S3Client:   s3Client,
 		Dispatcher: jobDispatcher,
+		DB:         db,
 	}
 
 	// Version 1
@@ -62,9 +63,11 @@ func main() {
 	{
 		v1.POST("/uploads", api.handleCreateUpload)
 		v1.POST("/jobs/transcoding", api.handleCreateTranscodingJob)
+		v1.GET("/jobs/:jobId", api.handleGetJobStatus)
 
 		v1.GET("/videos/:videoId", api.handleGetVideoDetails)
 		v1.GET("/videos/:videoId/playback/*assetPath", api.handlePlaybackProxy)
+
 	}
 
 	router.Run(":8080")
@@ -73,6 +76,7 @@ func main() {
 type API struct {
 	S3Client   *storage.S3Client
 	Dispatcher dispatcher.JobDispatcher
+	DB         *database.DB
 }
 
 func (api *API) handleCreateUpload(c *gin.Context) {
@@ -196,4 +200,21 @@ func (api *API) handlePlaybackProxy(c *gin.Context) {
 
 	c.Header("Content-Type", "application/vnd.apple.mpegurl")
 	c.String(http.StatusOK, rewrittenPlaylist.String())
+}
+
+func (api *API) handleGetJobStatus(c *gin.Context) {
+	jobID := c.Param("jobId")
+
+	job, err := api.DB.GetJob(jobID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"job_id":   job.ID,
+		"video_id": job.VideoID,
+		"status":   job.Status,
+		"error":    job.Error,
+	})
 }
