@@ -53,17 +53,12 @@ func (d *LocalDispatcher) Dispatch(ctx context.Context, payload models.VideoEnco
 		pipeline.Uploader = uploader.NewLocalUploader(d.s3Client, d.db, jobID)
 
 		if err := pipeline.Run(context.Background(), d.s3Client); err != nil {
-			errStr := err.Error()
 			log.Printf("[%s] Pipeline failed: %v", jobID, err)
-			if updateErr := d.db.UpdateJobStatus(jobID, "failed", &errStr); updateErr != nil {
-				log.Printf("[%s] Failed to update job status to failed: %v", jobID, updateErr)
-			}
+			pipeline.Uploader.NotifyFailed(err.Error())
 			return
 		}
 
-		if err := d.db.UpdateJobStatus(jobID, "completed", nil); err != nil {
-			log.Printf("[%s] Failed to update job status to completed: %v", jobID, err)
-		}
+		pipeline.Uploader.NotifyComplete()
 		log.Printf("[%s] Pipeline completed successfully", jobID)
 	}()
 
