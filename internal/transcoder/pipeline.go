@@ -133,6 +133,7 @@ func (p *EncodingPipeline) Probe() error {
 }
 
 type completedRendition struct {
+	Width        int
 	Height       int
 	Bandwidth    int
 	PlaylistPath string
@@ -192,8 +193,14 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 			mu.Lock()
 			defer mu.Unlock()
 
+			scaledWidth := (p.SourceInfo.Width * height) / p.SourceInfo.Height
+			if scaledWidth%2 != 0 {
+				scaledWidth++
+			}
+
 			completedRenditions = append(completedRenditions, completedRendition{
 				Height:       height,
+				Width:        scaledWidth,
 				Bandwidth:    getBandwidthForHeight(height),
 				PlaylistPath: fmt.Sprintf("%dp/playlist.m3u8", height),
 			})
@@ -312,9 +319,7 @@ func (p *EncodingPipeline) updateMasterPlaylist(ctx context.Context, s3c *storag
 	content.WriteString("#EXT-X-VERSION:3\n")
 
 	for _, r := range renditions {
-		// TODO: HERE IS STILL USING HARDCODED 16:9 RATIO
-		width := (r.Height * 16) / 9
-		content.WriteString(fmt.Sprintf("#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%dx%d\n", r.Bandwidth, width, r.Height))
+		content.WriteString(fmt.Sprintf("#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%dx%d\n", r.Bandwidth, r.Width, r.Height))
 		content.WriteString(r.PlaylistPath + "\n")
 	}
 
