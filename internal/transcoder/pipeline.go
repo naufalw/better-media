@@ -1,4 +1,4 @@
-package worker
+package transcoder
 
 import (
 	"better-media/internal/storage"
@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -79,7 +80,7 @@ func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error
 func (p *EncodingPipeline) Download(ctx context.Context, s3c *storage.S3Client) error {
 	log.Printf("[%s] Stage [1/5]: Downloading from S3...\n", p.Payload.VideoID)
 	objectKey := filepath.Join(p.Payload.VideoID, "source", p.Payload.InputFile)
-	log.Printf("Attempting to download object: %s", objectKey)
+	log.Printf("[%s] Attempting to download object: %s", p.Payload.VideoID, objectKey)
 	return s3c.DownloadFile(ctx, objectKey, p.DownloadedFilePath)
 }
 
@@ -125,7 +126,8 @@ func (p *EncodingPipeline) Probe() error {
 		return fmt.Errorf("no video stream found in file")
 	}
 
-	log.Printf("Probe complete. Resolution: %dx%d, HasAudio: %t", p.SourceInfo.Width, p.SourceInfo.Height, p.SourceInfo.HasAudio)
+	log.Printf("[%s] Probe complete. Resolution: %dx%d, HasAudio: %t", p.Payload.VideoID,
+		p.SourceInfo.Width, p.SourceInfo.Height, p.SourceInfo.HasAudio)
 	return nil
 
 }
@@ -146,13 +148,7 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 		}
 	}
 
-	sourceResInList := false
-	for _, r := range renditionsToEncode {
-		if r == p.SourceInfo.Height {
-			sourceResInList = true
-			break
-		}
-	}
+	sourceResInList := slices.Contains(renditionsToEncode, p.SourceInfo.Height)
 
 	if !sourceResInList {
 		renditionsToEncode = append(renditionsToEncode, p.SourceInfo.Height)
@@ -263,7 +259,7 @@ func (p *EncodingPipeline) EncodeRendition(ctx context.Context, height int) erro
 	args := []string{
 		"-hide_banner", "-y",
 		"-i", p.DownloadedFilePath,
-		"-c:v", "h264_videotoolbox",
+		"-c:v", "h264",
 		"-b:v", videoBitrate,
 		"-profile:v", "main",
 		"-pix_fmt", "yuv420p",

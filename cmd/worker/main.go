@@ -2,7 +2,7 @@ package main
 
 import (
 	"better-media/internal/storage"
-	"better-media/internal/worker"
+	"better-media/internal/transcoder"
 	"better-media/pkg/models"
 	"log"
 	"os"
@@ -34,7 +34,7 @@ func main() {
 
 	mux := asynq.NewServeMux()
 
-	processor := worker.NewTaskProcessor(s3Client)
+	processor := transcoder.NewTaskProcessor(s3Client)
 
 	mux.HandleFunc(models.TaskEncodeVideo, processor.HandleVideoEncodeTask)
 

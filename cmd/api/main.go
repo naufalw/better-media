@@ -1,6 +1,7 @@
 package main
 
 import (
+	"better-media/internal/dispatcher"
 	"better-media/internal/storage"
 	"better-media/pkg/models"
 	"bufio"
@@ -17,8 +18,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
-
-	"github.com/hibiken/asynq"
 )
 
 type PresignedRequest struct {
@@ -35,9 +34,6 @@ func main() {
 	config.AllowMethods = []string{"GET", "POST", "PUT", "OPTIONS"}
 	router.Use(cors.New(config))
 
-	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr})
-	defer asynqClient.Close()
-
 	s3Client, err := storage.NewS3Client(
 		os.Getenv("S3_BUCKET_NAME"),
 		os.Getenv("S3_ENDPOINT"),
@@ -47,9 +43,10 @@ func main() {
 		log.Fatalf("failed to create s3 client: %v", err)
 	}
 
+	jobDispatcher := dispatcher.NewLocalDispatcher(s3Client)
 	api := &API{
-		S3Client:    s3Client,
-		AsynqClient: asynqClient,
+		S3Client:   s3Client,
+		Dispatcher: jobDispatcher,
 	}
 
 	// Version 1
@@ -66,8 +63,8 @@ func main() {
 }
 
 type API struct {
-	S3Client    *storage.S3Client
-	AsynqClient *asynq.Client
+	S3Client   *storage.S3Client
+	Dispatcher dispatcher.JobDispatcher
 }
 
 func (api *API) handleCreateUpload(c *gin.Context) {
@@ -105,18 +102,12 @@ func (api *API) handleCreateTranscodingJob(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
-	task, err := models.NewVideoEncodingTask(req)
+	jobID, err := api.Dispatcher.Dispatch(c, req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": fmt.Sprintf("Cannot encode: %v", err)})
 		return
 	}
-	info, err := api.AsynqClient.Enqueue(task, asynq.MaxRetry(0))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to enqueue task"})
-		return
-	}
-	log.Printf("Enqueued task: id=%s queue=%s", info.ID, info.Queue)
-	c.JSON(http.StatusOK, gin.H{"message": "Encoding job has been queued", "task_id": info.ID})
+	c.JSON(http.StatusOK, gin.H{"message": "Encoding job has been queued", "job_id": jobID})
 }
 
 func (api *API) handleGetVideoDetails(c *gin.Context) {
