@@ -1,6 +1,7 @@
 package main
 
 import (
+	"better-media/internal/database"
 	"better-media/internal/dispatcher"
 	"better-media/internal/storage"
 	"better-media/pkg/models"
@@ -28,6 +29,13 @@ const redisAddr = "127.0.0.1:6379"
 
 func main() {
 	godotenv.Load()
+
+	db, err := database.New("./data/katie.db")
+	if err != nil {
+		log.Fatalf("failed to initialize database: %v", err)
+	}
+	defer db.Close()
+
 	router := gin.Default()
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"http://localhost:3000"}
