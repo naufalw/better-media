@@ -1,4 +1,4 @@
-package worker
+package transcoder
 
 import (
 	"better-media/internal/storage"

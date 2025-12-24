@@ -1,7 +1,7 @@
 // This is a temporary utility to choose video and audio bitrates based on the height of the video.
 // This will be removed ASAP along with more adaptive settings using ffprobe and user's preferences.
 
-package worker
+package transcoder
 
 func chooseVideoBitrate(h int) string {
 	switch {
