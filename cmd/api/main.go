@@ -71,6 +71,8 @@ func main() {
 		v1.GET("/videos/:videoId", api.handleGetVideoDetails)
 		v1.GET("/videos/:videoId/playback/*assetPath", api.handlePlaybackProxy)
 
+		v1.POST("/callbacks/:jobId/presign-upload", api.handlePresignUpload)
+		v1.POST("/callbacks/:jobId/status", api.handleWorkerStatusUpdate)
 	}
 
 	router.Run(":8080")
@@ -220,4 +222,65 @@ func (api *API) handleGetJobStatus(c *gin.Context) {
 		"status":   job.Status,
 		"error":    job.Error,
 	})
+}
+
+// from transcoder to request presigned url for uploading
+func (api *API) handlePresignUpload(c *gin.Context) {
+	jobID := c.Param("jobId")
+
+	job, err := api.DB.GetJob(jobID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+		return
+	}
+
+	var req struct {
+		Files []string `json:"files"` // key, such as ["hls/360p/playlist.m3u8", "hls/360p/segment000.ts"]
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	urls := make(map[string]string)
+
+	for _, file := range req.Files {
+		objectKey := fmt.Sprintf("%s/%s", job.VideoID, file)
+		presigned, err := api.S3Client.GeneratePresignedPut(c.Request.Context(), objectKey, time.Minute*15)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to generate presign for %s", file)})
+			return
+		}
+
+		urls[file] = presigned.URL
+
+	}
+
+	c.JSON(http.StatusOK, gin.H{"urls": urls})
+
+}
+
+// from transcoder to main api to update status
+func (api *API) handleWorkerStatusUpdate(c *gin.Context) {
+	jobID := c.Param("jobId")
+
+	var req struct {
+		Status string  `json:"status"` // "playable", "completed", "failed"
+		Error  *string `json:"error"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := api.DB.UpdateJobStatus(jobID, req.Status, req.Error); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update status"})
+		return
+	}
+
+	log.Printf("[%s] Worker reported status: %s", jobID, req.Status)
+	c.JSON(http.StatusOK, gin.H{"status": "updated"})
 }
