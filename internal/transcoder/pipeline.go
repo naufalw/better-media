@@ -68,6 +68,9 @@ func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error
 	log.Println("Stage: Run...")
 
 	if p.StreamURL == "" {
+		if s3c == nil {
+			return fmt.Errorf("StreamURL is empty and no S3 client provided")
+		}
 		objectKey := filepath.Join(p.Payload.VideoID, "source", p.Payload.InputFile)
 		presignedGet, err := s3c.GeneratePresignedGet(ctx, objectKey, time.Hour)
 		if err != nil {
