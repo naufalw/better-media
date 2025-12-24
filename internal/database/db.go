@@ -11,6 +11,8 @@ type DB struct {
 	*sql.DB
 }
 
+// New opens a SQLite database at dbPath, applies required schema migrations, and returns a DB wrapper.
+// It returns an error if opening the database or applying migrations fails.
 func New(dbPath string) (*DB, error) {
 	db, err := sql.Open("sqlite", dbPath)
 
@@ -26,6 +28,8 @@ func New(dbPath string) (*DB, error) {
 	return &DB{db}, nil
 }
 
+// migrate ensures the database contains a `jobs` table with the required columns
+// and default values. It returns any error encountered while applying the schema.
 func migrate(db *sql.DB) error {
 	schema := `
 	CREATE TABLE IF NOT EXISTS jobs (

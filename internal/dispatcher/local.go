@@ -16,6 +16,7 @@ type LocalDispatcher struct {
 	db       *database.DB
 }
 
+// NewLocalDispatcher constructs a LocalDispatcher configured with the provided S3 client and database.
 func NewLocalDispatcher(s3Client *storage.S3Client, db *database.DB) *LocalDispatcher {
 	return &LocalDispatcher{
 		s3Client,
@@ -33,25 +34,33 @@ func (d *LocalDispatcher) Dispatch(ctx context.Context, payload models.VideoEnco
 	// pending til this point
 
 	go func() {
-		d.db.UpdateJobStatus(jobID, "processing", nil)
+		if err := d.db.UpdateJobStatus(jobID, "processing", nil); err != nil {
+			log.Printf("[%s] Failed to update job status to processing: %v", jobID, err)
+		}
 
 		pipeline, err := transcoder.NewEncodingPipeline(payload)
 
 		if err != nil {
 			errStr := err.Error()
 			log.Printf("[%s] Failed to create pipeline :%v", jobID, err)
-			d.db.UpdateJobStatus(jobID, "failed", &errStr)
+			if updateErr := d.db.UpdateJobStatus(jobID, "failed", &errStr); updateErr != nil {
+				log.Printf("[%s] Failed to update job status to failed: %v", jobID, updateErr)
+			}
 			return
 		}
 
 		if err := pipeline.Run(context.Background(), d.s3Client); err != nil {
 			errStr := err.Error()
 			log.Printf("[%s] Pipeline failed: %v", jobID, err)
-			d.db.UpdateJobStatus(jobID, "failed", &errStr)
+			if updateErr := d.db.UpdateJobStatus(jobID, "failed", &errStr); updateErr != nil {
+				log.Printf("[%s] Failed to update job status to failed: %v", jobID, updateErr)
+			}
 			return
 		}
 
-		d.db.UpdateJobStatus(jobID, "completed", nil)
+		if err := d.db.UpdateJobStatus(jobID, "completed", nil); err != nil {
+			log.Printf("[%s] Failed to update job status to completed: %v", jobID, err)
+		}
 		log.Printf("[%s] Pipeline completed successfully", jobID)
 	}()
 

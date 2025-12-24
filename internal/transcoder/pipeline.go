@@ -41,6 +41,11 @@ type EncodingPipeline struct {
 	StreamURL string
 }
 
+// NewEncodingPipeline creates a temporary working directory for the given VideoEncodingPayload and returns
+// an initialized EncodingPipeline configured to use that directory.
+// The returned pipeline has TempDir set to the created directory, DownloadedFilePath set to
+// "<TempDir>/<InputFile>", and EncodedOutputPath set to "<TempDir>/encoded".
+// An error is returned if the temporary directory cannot be created.
 func NewEncodingPipeline(p models.VideoEncodingPayload) (*EncodingPipeline, error) {
 	tempDir, err := os.MkdirTemp("", "media-*-"+p.VideoID)
 	if err != nil {
