@@ -39,13 +39,15 @@ type EncodingPipeline struct {
 	EncodedOutputPath  string
 
 	StreamURL string
+
+	OnFirstRenditionReady func()
 }
 
 // NewEncodingPipeline creates a temporary working directory for the given VideoEncodingPayload and returns
 // an initialized EncodingPipeline configured to use that directory.
-// The returned pipeline has TempDir set to the created directory, DownloadedFilePath set to
-// "<TempDir>/<InputFile>", and EncodedOutputPath set to "<TempDir>/encoded".
-// An error is returned if the temporary directory cannot be created.
+// - TempDir set to the created directory
+// - DownloadedFilePath set to "<TempDir>/<InputFile>"
+// - EncodedOutputPath set to "<TempDir>/encoded".
 func NewEncodingPipeline(p models.VideoEncodingPayload) (*EncodingPipeline, error) {
 	tempDir, err := os.MkdirTemp("", "media-*-"+p.VideoID)
 	if err != nil {
@@ -71,10 +73,6 @@ func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error
 	p.StreamURL = presignedGet.URL
 
 	defer p.Cleanup()
-
-	// if err := p.Download(ctx, s3c); err != nil {
-	// 	return fmt.Errorf("failed to download file: %w", err)
-	// }
 
 	if err := p.Probe(); err != nil {
 		return fmt.Errorf("failed to probe file: %w", err)
@@ -179,8 +177,13 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 	var wg sync.WaitGroup // this is for encoding goroutines
 	var mu sync.Mutex     // this is for master playlist updating mutex
 
+	// limit the number of concurrent transcoding
+	maxConcurrent := 2
+	sem := make(chan struct{}, maxConcurrent)
+
 	var completedRenditions []completedRendition
 	var encodingErrors []error
+	var firstRenditionNotified bool
 
 	hlsBase := filepath.Join(p.EncodedOutputPath, "hls")
 	if err := os.MkdirAll(hlsBase, 0o755); err != nil {
@@ -193,6 +196,8 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 		wg.Add(1)
 
 		go func(height int) {
+			sem <- struct{}{}
+			defer func() { <-sem }()
 			defer wg.Done()
 
 			err := p.EncodeRendition(ctx, height)
@@ -223,6 +228,11 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 			if err := p.updateMasterPlaylist(ctx, s3c, hlsBase, completedRenditions); err != nil {
 				log.Printf("[%s] ERROR updating master playlist after %dp rendition: %v\n", p.Payload.VideoID, height, err)
 				encodingErrors = append(encodingErrors, fmt.Errorf("failed to update master playlist for %dp: %w", height, err))
+			}
+
+			if !firstRenditionNotified && p.OnFirstRenditionReady != nil {
+				firstRenditionNotified = true
+				p.OnFirstRenditionReady()
 			}
 		}(height)
 
@@ -276,17 +286,17 @@ func (p *EncodingPipeline) EncodeRendition(ctx context.Context, height int) erro
 
 	// This is hacky, but we need some way to define the bitrate
 	audioBitrate := chooseAudioBitrate(height)
-	videoBitrate := chooseVideoBitrate(height)
 
 	args := []string{
 		"-hide_banner", "-y",
 		"-i", p.StreamURL,
-		"-c:v", "h264",
-		"-b:v", videoBitrate,
+		"-c:v", getBestVideoEncoder(),
 		"-profile:v", "main",
 		"-pix_fmt", "yuv420p",
 		"-vf", fmt.Sprintf("scale=-2:%d", height),
 	}
+
+	args = append(args, getQualityArgs()...)
 
 	if p.SourceInfo.HasAudio {
 		args = append(args,

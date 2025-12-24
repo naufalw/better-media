@@ -3,6 +3,11 @@
 
 package transcoder
 
+import (
+	"os/exec"
+	"strings"
+)
+
 func chooseVideoBitrate(h int) string {
 	switch {
 	case h >= 1080:
@@ -38,4 +43,48 @@ func chooseAudioBitrate(h int) string {
 		return "128k"
 	}
 	return "96k"
+}
+
+var cachedEncoder string
+
+func getBestVideoEncoder() string {
+	if cachedEncoder != "" {
+		return cachedEncoder
+	}
+
+	out, err := exec.Command("ffmpeg", "-encoders").CombinedOutput()
+
+	if err != nil {
+		cachedEncoder = "libx264" // ffmpeg is missing or error
+		return cachedEncoder
+	}
+
+	s := string(out)
+	if strings.Contains(s, "h264_videotoolbox") {
+		cachedEncoder = "h264_videotoolbox"
+	} else if strings.Contains(s, "h264_nvenc") {
+		cachedEncoder = "h264_nvenc"
+	} else {
+		cachedEncoder = "libx264"
+	}
+
+	return cachedEncoder
+
+}
+
+// Get the quality control flags to handle different encoder
+func getQualityArgs() []string {
+	encoder := getBestVideoEncoder()
+
+	switch encoder {
+	case "h264_videotoolbox":
+		// VideoToolbox -q:v (0-100, higher = better)
+		return []string{"-q:v", "65"}
+	case "h264_nvenc":
+		// NVENC -cq (0-51, lower = better)
+		return []string{"-cq", "23"}
+	default:
+		// libx264 -crf (0-51, lower = better)
+		return []string{"-crf", "23"}
+	}
 }
