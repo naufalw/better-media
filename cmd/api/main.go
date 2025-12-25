@@ -342,6 +342,7 @@ func (api *API) handleGetSubtitles(c *gin.Context) {
 	objectKey := fmt.Sprintf("%s/subtitles/subtitles.vtt", videoID)
 	presigned, err := api.S3Client.GeneratePresignedGet(c.Request.Context(), objectKey, time.Hour)
 	if err != nil {
+		log.Printf("Error generating presigned URL for subtitles %s: %v", objectKey, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Subtitles not found"})
 		return
 	}
