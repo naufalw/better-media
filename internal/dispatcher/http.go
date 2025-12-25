@@ -50,7 +50,14 @@ func (d *HTTPDispatcher) Dispatch(ctx context.Context, payload models.VideoEncod
 		return "", fmt.Errorf("Error in dispatching to external %v", err)
 	}
 
-	transcodeRequest := models.TranscodeRequest{JobID: jobID, VideoID: payload.VideoID, DownloadURL: presignedGet.URL, CallbackURL: d.callbackUrl, Resolutions: payload.Resolutions}
+	transcodeRequest := models.TranscodeRequest{
+		JobID:       jobID,
+		VideoID:     payload.VideoID,
+		DownloadURL: presignedGet.URL,
+		CallbackURL: d.callbackUrl,
+		Resolutions: payload.Resolutions,
+		Transcribe:  payload.Transcribe,
+	}
 
 	jsonBody, err := json.Marshal(transcodeRequest)
 	if err != nil {

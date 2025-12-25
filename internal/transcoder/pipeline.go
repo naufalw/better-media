@@ -2,6 +2,7 @@ package transcoder
 
 import (
 	"better-media/internal/storage"
+	"better-media/internal/transcription"
 	"better-media/internal/uploader"
 	"better-media/pkg/models"
 	"context"
@@ -89,6 +90,12 @@ func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error
 		log.Printf("[%s] Warning: Thumbnail generation failed: %v", p.Payload.VideoID, err)
 		// if thumbnail fail, just ignore
 	}
+
+	if err := p.GenerateSubtitles(ctx); err != nil {
+		log.Printf("[%s] Warning: Subtitle generation failed: %v", p.Payload.VideoID, err)
+		// if subtitle fail, just ignore
+	}
+
 	if err := p.Encode(ctx, s3c); err != nil {
 		return fmt.Errorf("failed to encode file: %w", err)
 	}
@@ -327,7 +334,6 @@ func (p *EncodingPipeline) GenerateThumbnails(ctx context.Context) error {
 
 	sizes := []int{320, 640, 1280}
 	thumbDir := filepath.Join(p.EncodedOutputPath, "thumbnails")
-	thumbDir := filepath.Join(p.EncodedOutputPath, "thumbnails")
 	if err := os.MkdirAll(thumbDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create thumbnail directory: %w", err)
 	}
@@ -350,6 +356,35 @@ func (p *EncodingPipeline) GenerateThumbnails(ctx context.Context) error {
 		}
 	}
 
+	return nil
+}
+
+// Generate subtitle
+func (p *EncodingPipeline) GenerateSubtitles(ctx context.Context) error {
+	if !p.Payload.Transcribe {
+		log.Printf("[%s] Skipping subtitles: transcription not requested", p.Payload.VideoID)
+		return nil
+	}
+
+	apiURL := os.Getenv("TRANSCRIPTION_API_URL")
+	apiKey := os.Getenv("TRANSCRIPTION_API_KEY")
+	model := os.Getenv("TRANSCRIPTION_MODEL")
+	if apiURL == "" || apiKey == "" {
+		log.Printf("[%s] Skipping subtitles: TRANSCRIPTION_API_URL or TRANSCRIPTION_API_KEY not set", p.Payload.VideoID)
+		return nil
+	}
+	if model == "" {
+		model = "whisper-large-v3"
+	}
+	log.Printf("[%s] Generating subtitles via %s", p.Payload.VideoID, apiURL)
+	provider := transcription.NewProvider(apiURL, apiKey, model)
+	transcriber := transcription.NewTranscriber(provider)
+	subtitlesDir := filepath.Join(p.EncodedOutputPath, "subtitles")
+	vttPath, err := transcriber.TranscribeVideo(ctx, p.StreamURL, subtitlesDir)
+	if err != nil {
+		return fmt.Errorf("subtitle generation failed: %w", err)
+	}
+	log.Printf("[%s] Subtitles generated: %s", p.Payload.VideoID, vttPath)
 	return nil
 }
 
@@ -461,6 +496,24 @@ func (p *EncodingPipeline) Upload(ctx context.Context) error {
 			return nil
 		}); err != nil {
 			log.Printf("Error walking thumbnail directory: %v", err)
+		}
+	}
+
+	//subtitle
+	subtitlesDir := filepath.Join(p.EncodedOutputPath, "subtitles")
+	if _, err := os.Stat(subtitlesDir); err == nil {
+		if err := filepath.Walk(subtitlesDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() {
+				return nil
+			}
+			objectKey := filepath.Join(p.Payload.VideoID, "subtitles", info.Name())
+			log.Printf("Uploading subtitle %s", objectKey)
+			if err := p.Uploader.Upload(ctx, path, objectKey); err != nil {
+				log.Printf("Failed to upload subtitle %s: %v", objectKey, err)
+			}
+			return nil
+		}); err != nil {
+			log.Printf("Error walking subtitles directory: %v", err)
 		}
 	}
 

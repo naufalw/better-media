@@ -15,6 +15,7 @@ type VideoEncodingPayload struct {
 	InputFile    string `json:"input_file" binding:"required"`
 	TargetFormat string `json:"target_format"`
 	Resolutions  []int  `json:"resolutions" binding:"required"`
+	Transcribe   bool   `json:"transcribe"`
 }
 
 func NewVideoEncodingTask(data VideoEncodingPayload) (*asynq.Task, error) {
