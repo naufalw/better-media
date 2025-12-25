@@ -318,11 +318,18 @@ func (api *API) handleGetThumbnail(c *gin.Context) {
 	videoID := c.Param("videoId")
 	size := c.Param("size") // "320", "640", "1280"
 
+	validSizes := map[string]bool{"320": true, "640": true, "1280": true}
+	if !validSizes[size] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid size. Must be one of: 320, 640, 1280"})
+		return
+	}
+
 	objectKey := fmt.Sprintf("%s/thumbnails/thumb_%s.jpg", videoID, size)
 
 	presigned, err := api.S3Client.GeneratePresignedGet(c.Request.Context(), objectKey, time.Hour)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Thumbnail not found"})
+		log.Printf("Error generating presigned URL for thumbnail %s: %v", objectKey, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve thumbnail"})
 		return
 	}
 
