@@ -75,23 +75,12 @@ func main() {
 		DB:         db,
 	}
 
-	rtmpPort := 1935
-	rtmpServer := livestream.NewRTMPServer(rtmpPort, "./data/streams")
-	rtmpServer.OnStreamStart = func(streamKey, hlsPath string) {
-		log.Printf("[API] Live stream started: %s -> %s", streamKey, hlsPath)
+	// livestream manager
+	lsManager := livestream.NewManager(1935, "./data/streams", s3Client, db)
+	if err := lsManager.Start(); err != nil {
+		log.Printf("Failed to start livestream manager: %v", err)
 	}
-	rtmpServer.OnStreamEnd = func(streamKey string) {
-		log.Printf("[API] Live stream ended: %s", streamKey)
-	}
-
-	rtmpServer.ValidateKey = func(key string) bool {
-		return db.ValidateStreamKey(key)
-	}
-
-	if err := rtmpServer.Start(); err != nil {
-		log.Printf("Failed to start RTMP server: %v", err)
-	}
-	api.RTMPServer = rtmpServer
+	api.LivestreamManager = lsManager
 
 	// Version 1
 	v1 := router.Group("/v1")
@@ -120,10 +109,10 @@ func main() {
 }
 
 type API struct {
-	S3Client   *storage.S3Client
-	Dispatcher dispatcher.JobDispatcher
-	DB         *database.DB
-	RTMPServer *livestream.RTMPServer
+	S3Client          *storage.S3Client
+	Dispatcher        dispatcher.JobDispatcher
+	DB                *database.DB
+	LivestreamManager *livestream.Manager
 }
 
 func (api *API) handleCreateUpload(c *gin.Context) {
@@ -377,14 +366,14 @@ func (api *API) handleGetSubtitles(c *gin.Context) {
 
 // Return all active live streams
 func (api *API) handleListLiveStreams(c *gin.Context) {
-	if api.RTMPServer == nil {
+	if api.LivestreamManager == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "RTMP server not running"})
 		return
 	}
-	streams := api.RTMPServer.GetActiveStreams()
+	streams := api.LivestreamManager.GetActiveStreams()
 	streamInfos := make([]gin.H, 0, len(streams))
 	for _, key := range streams {
-		stream := api.RTMPServer.GetStream(key)
+		stream := api.LivestreamManager.GetStream(key)
 		if stream != nil {
 			streamInfos = append(streamInfos, gin.H{
 				"key":        key,
