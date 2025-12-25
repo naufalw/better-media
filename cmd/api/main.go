@@ -92,6 +92,7 @@ func main() {
 
 		v1.GET("/videos", api.handleListVideos)
 		v1.GET("/videos/:videoId", api.handleGetVideoDetails)
+		v1.DELETE("/videos/:videoId", api.handleDeleteVideo)
 		v1.GET("/videos/:videoId/playback/*assetPath", api.handlePlaybackProxy)
 		v1.GET("/videos/:videoId/thumbnail/:size", api.handleGetThumbnail)
 		v1.GET("/videos/:videoId/subtitles", api.handleGetSubtitles)
@@ -172,6 +173,28 @@ func (api *API) handleGetVideoDetails(c *gin.Context) {
 		"title":       "My Awesome Video", // mock
 		"playbackUrl": playbackUrl,
 	})
+}
+
+func (api *API) handleDeleteVideo(c *gin.Context) {
+	videoId := c.Param("videoId")
+
+	video, err := api.DB.GetVideo(videoId)
+	if err != nil || video == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Video not found"})
+		return
+	}
+
+	if err := api.S3Client.DeletePrefix(c.Request.Context(), videoId+"/"); err != nil {
+		log.Printf("Warning: failed to delete S3 files for %s: %v", videoId, err)
+	}
+
+	if err := api.DB.DeleteVideo(videoId); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete video"})
+		return
+	}
+
+	log.Printf("[DELETE] Video %s deleted", videoId)
+	c.JSON(http.StatusOK, gin.H{"message": "Video deleted", "video_id": videoId})
 }
 
 func (api *API) handlePlaybackProxy(c *gin.Context) {

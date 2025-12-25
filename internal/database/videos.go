@@ -52,3 +52,10 @@ func (db *DB) GetVideo(id string) (*Video, error) {
 	}
 	return &v, nil
 }
+
+// Remove a video from DB
+func (db *DB) DeleteVideo(id string) error {
+	query := `DELETE FROM videos WHERE id = ?`
+	_, err := db.Exec(query, id)
+	return err
+}

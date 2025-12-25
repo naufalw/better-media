@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -126,4 +127,29 @@ func (s *S3Client) GetObject(ctx context.Context, key string) (io.ReadCloser, er
 		return nil, err
 	}
 	return output.Body, nil
+}
+
+// delete all object with the given prefix -> useful for video like /<videoID>/.......
+func (s *S3Client) DeletePrefix(ctx context.Context, prefix string) error {
+
+	paginator := s3.NewListObjectsV2Paginator(s.Client, &s3.ListObjectsV2Input{
+		Bucket: aws.String(s.BucketName),
+		Prefix: aws.String(prefix),
+	})
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to list objects: %w", err)
+		}
+		for _, obj := range page.Contents {
+			_, err := s.Client.DeleteObject(ctx, &s3.DeleteObjectInput{
+				Bucket: aws.String(s.BucketName),
+				Key:    obj.Key,
+			})
+			if err != nil {
+				log.Printf("Failed to delete %s: %v", *obj.Key, err)
+			}
+		}
+	}
+	return nil
 }
