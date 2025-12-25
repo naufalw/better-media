@@ -3,6 +3,7 @@ package main
 import (
 	"better-media/internal/database"
 	"better-media/internal/dispatcher"
+	"better-media/internal/livestream"
 	"better-media/internal/storage"
 	"better-media/pkg/models"
 	"bufio"
@@ -74,6 +75,19 @@ func main() {
 		DB:         db,
 	}
 
+	rtmpPort := 1935
+	rtmpServer := livestream.NewRTMPServer(rtmpPort, "./data/streams")
+	rtmpServer.OnStreamStart = func(streamKey, hlsPath string) {
+		log.Printf("[API] Live stream started: %s -> %s", streamKey, hlsPath)
+	}
+	rtmpServer.OnStreamEnd = func(streamKey string) {
+		log.Printf("[API] Live stream ended: %s", streamKey)
+	}
+	if err := rtmpServer.Start(); err != nil {
+		log.Printf("Failed to start RTMP server: %v", err)
+	}
+	api.RTMPServer = rtmpServer
+
 	// Version 1
 	v1 := router.Group("/v1")
 	{
@@ -89,6 +103,9 @@ func main() {
 		v1.POST("/callbacks/:jobId/presign-upload", api.handlePresignUpload)
 		v1.POST("/callbacks/:jobId/status", api.handleWorkerStatusUpdate)
 		v1.POST("/callbacks/:jobId/progress", api.handleWorkerProgressUpdate)
+
+		v1.GET("/live", api.handleListLiveStreams)
+		v1.GET("/live/:streamKey/playback/*filePath", api.handleLivePlayback)
 	}
 
 	router.Run(":8080")
@@ -98,6 +115,7 @@ type API struct {
 	S3Client   *storage.S3Client
 	Dispatcher dispatcher.JobDispatcher
 	DB         *database.DB
+	RTMPServer *livestream.RTMPServer
 }
 
 func (api *API) handleCreateUpload(c *gin.Context) {
@@ -347,4 +365,51 @@ func (api *API) handleGetSubtitles(c *gin.Context) {
 		return
 	}
 	c.Redirect(http.StatusTemporaryRedirect, presigned.URL)
+}
+
+// Return all active live streams
+func (api *API) handleListLiveStreams(c *gin.Context) {
+	if api.RTMPServer == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "RTMP server not running"})
+		return
+	}
+	streams := api.RTMPServer.GetActiveStreams()
+	streamInfos := make([]gin.H, 0, len(streams))
+	for _, key := range streams {
+		stream := api.RTMPServer.GetStream(key)
+		if stream != nil {
+			streamInfos = append(streamInfos, gin.H{
+				"key":        key,
+				"started_at": stream.StartedAt,
+				"hls_url":    fmt.Sprintf("/v1/live/%s/playback/index.m3u8", key),
+			})
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"streams": streamInfos})
+}
+
+// Serves HLS files for live stream
+func (api *API) handleLivePlayback(c *gin.Context) {
+	streamKey := c.Param("streamKey")
+	filePath := c.Param("filePath")
+
+	if len(filePath) > 0 && filePath[0] == '/' {
+		filePath = filePath[1:]
+	}
+	fullPath := filepath.Join("./data/streams", streamKey, filePath)
+
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return
+	}
+
+	contentType := "application/octet-stream"
+	if strings.HasSuffix(filePath, ".m3u8") {
+		contentType = "application/vnd.apple.mpegurl"
+	} else if strings.HasSuffix(filePath, ".ts") {
+		contentType = "video/mp2t"
+	}
+	c.Header("Content-Type", contentType)
+	c.Header("Cache-Control", "no-cache")
+	c.File(fullPath)
 }
