@@ -6,6 +6,7 @@ type Job struct {
 	ID        string
 	VideoID   string
 	Status    string // pending, processing, playable, completed, failed
+	Progress  int
 	Error     *string
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -23,7 +24,7 @@ func (db *DB) CreateJob(id, videoID string) error {
 
 // fetch a job by ID
 func (db *DB) GetJob(id string) (*Job, error) {
-	query := `SELECT id, video_id, status, error, created_at, updated_at 
+	query := `SELECT id, video_id, status, progress, error, created_at, updated_at 
               FROM jobs WHERE id = ?`
 
 	row := db.QueryRow(query, id)
@@ -34,6 +35,7 @@ func (db *DB) GetJob(id string) (*Job, error) {
 		&job.ID,
 		&job.VideoID,
 		&job.Status,
+		&job.Progress,
 		&job.Error,
 		&job.CreatedAt,
 		&job.UpdatedAt,
@@ -53,5 +55,11 @@ func (db *DB) UpdateJobStatus(id, status string, errMsg *string) error {
               WHERE id = ?`
 
 	_, err := db.Exec(query, status, errMsg, id)
+	return err
+}
+
+func (db *DB) UpdateJobProgress(id string, progress int) error {
+	query := `UPDATE jobs SET progress = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+	_, err := db.Exec(query, progress, id)
 	return err
 }

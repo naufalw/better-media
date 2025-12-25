@@ -4,7 +4,6 @@ import (
 	"better-media/internal/storage"
 	"better-media/internal/uploader"
 	"better-media/pkg/models"
-	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -272,9 +271,36 @@ func (p *EncodingPipeline) EncodeMultipleRenditions(ctx context.Context, heights
 	log.Printf("[%s] Transcoding for rest renditions %v: ffmpeg %s", p.Payload.VideoID, heights, strings.Join(args, " "))
 
 	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
-	output, err := cmd.CombinedOutput()
+
+	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return fmt.Errorf("multi encoding failed: %w\nOutput: %s", err, string(output))
+		return fmt.Errorf("failed to get stderr pipe: %w", err)
+	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start ffmpeg: %w", err)
+	}
+
+	// Parse progress from stderr
+	go func() {
+		parseFFmpegProgress(stderr, func(currentSeconds float64) {
+			if p.SourceInfo.Duration > 0 && p.Uploader != nil {
+				// multioutput start after first rendition
+				totalRenditions := len(selectResolutions(p.SourceInfo.Height))
+				baseProgress := 100 / totalRenditions // first rendition
+				remainingShare := 100 - baseProgress  // What's left for multiout
+
+				// scale current progress to remaining portion
+				phasePercent := int((currentSeconds / p.SourceInfo.Duration) * float64(remainingShare))
+				percent := baseProgress + phasePercent
+				if percent > 100 {
+					percent = 100
+				}
+				p.Uploader.UpdateProgress(percent)
+			}
+		})
+	}()
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("multi encoding failed: %w", err)
 	}
 
 	return nil
@@ -437,12 +463,34 @@ func (p *EncodingPipeline) EncodeRendition(ctx context.Context, height int) erro
 	)
 
 	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+
 	log.Printf("[%s] Encoding %dp: ffmpeg %s\n", p.Payload.VideoID, height, strings.Join(args, " "))
 
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("ffmpeg failed for %dp: %w\n--- FFmpeg output ---\n%s", height, err, stderr.String())
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("failed to get stderr pipe: %w", err)
+	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start ffmpeg: %w", err)
+	}
+
+	// get the progress from piped stderr
+	go func() {
+		parseFFmpegProgress(stderr, func(currentSeconds float64) {
+			if p.SourceInfo.Duration > 0 && p.Uploader != nil {
+				totalRenditions := len(selectResolutions(p.SourceInfo.Height))
+				perRenditionPercent := 100 / totalRenditions
+				percent := int((currentSeconds / p.SourceInfo.Duration) * float64(perRenditionPercent))
+				if percent > 100 {
+					percent = 100
+				}
+				p.Uploader.UpdateProgress(percent)
+			}
+		})
+	}()
+
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("ffmpeg failed for %dp: %w", height, err)
 	}
 
 	log.Printf("[%s] Finished encoding %dp\n", p.Payload.VideoID, height)

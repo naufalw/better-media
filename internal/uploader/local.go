@@ -39,3 +39,7 @@ func (u *LocalUploader) NotifyFailed(errMsg string) error {
 	log.Printf("[%s] Pipeline failed: %s", u.jobID, errMsg)
 	return u.db.UpdateJobStatus(u.jobID, "failed", &errMsg)
 }
+
+func (u *LocalUploader) UpdateProgress(percent int) error {
+	return u.db.UpdateJobProgress(u.jobID, percent)
+}

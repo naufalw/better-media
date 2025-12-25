@@ -37,6 +37,7 @@ func migrate(db *sql.DB) error {
 		video_id TEXT NOT NULL,
 		status TEXT NOT NULL DEFAULT 'pending',
 		error TEXT,
+		progress INTEGER DEFAULT 0,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);

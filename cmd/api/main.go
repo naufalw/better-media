@@ -86,6 +86,7 @@ func main() {
 
 		v1.POST("/callbacks/:jobId/presign-upload", api.handlePresignUpload)
 		v1.POST("/callbacks/:jobId/status", api.handleWorkerStatusUpdate)
+		v1.POST("/callbacks/:jobId/progress", api.handleWorkerProgressUpdate)
 	}
 
 	router.Run(":8080")
@@ -233,6 +234,7 @@ func (api *API) handleGetJobStatus(c *gin.Context) {
 		"job_id":   job.ID,
 		"video_id": job.VideoID,
 		"status":   job.Status,
+		"progress": job.Progress,
 		"error":    job.Error,
 	})
 }
@@ -286,5 +288,26 @@ func (api *API) handleWorkerStatusUpdate(c *gin.Context) {
 	}
 
 	log.Printf("[%s] Worker reported status: %s", jobID, req.Status)
+	c.JSON(http.StatusOK, gin.H{"status": "updated"})
+}
+
+// receives progress updates from distributed workers
+func (api *API) handleWorkerProgressUpdate(c *gin.Context) {
+	jobID := c.Param("jobId")
+
+	var req struct {
+		Progress int `json:"progress"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := api.DB.UpdateJobProgress(jobID, req.Progress); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update progress"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"status": "updated"})
 }

@@ -4,9 +4,14 @@
 package transcoder
 
 import (
+	"bufio"
+	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -101,4 +106,25 @@ func selectResolutions(sourceHeight int) []int {
 	}
 
 	return selected
+}
+
+// read ffmpeg stderr and call onProgress with current time in seconds
+func parseFFmpegProgress(r io.Reader, onProgress func(currentSeconds float64)) {
+	scanner := bufio.NewScanner(r)
+	timeRegex := regexp.MustCompile(`time=(\d+):(\d+):(\d+)\.(\d+)`)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		matches := timeRegex.FindStringSubmatch(line)
+		if len(matches) == 5 {
+			hours, _ := strconv.Atoi(matches[1])
+			mins, _ := strconv.Atoi(matches[2])
+			secs, _ := strconv.Atoi(matches[3])
+			ms, _ := strconv.Atoi(matches[4])
+
+			currentSeconds := float64(hours)*3600 + float64(mins)*60 + float64(secs) + float64(ms)/100
+			log.Printf("Progress parsed: %.2f seconds", currentSeconds)
+			onProgress(currentSeconds)
+		}
+	}
 }
