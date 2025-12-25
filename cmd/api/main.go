@@ -76,7 +76,7 @@ func main() {
 	}
 
 	// livestream manager
-	lsManager := livestream.NewManager(1935, "./data/streams", s3Client, db)
+	lsManager := livestream.NewManager(1935, "./data/streams", s3Client, db, jobDispatcher)
 	if err := lsManager.Start(); err != nil {
 		log.Printf("Failed to start livestream manager: %v (livestream features disabled)", err)
 	} else {

@@ -2,7 +2,9 @@ package livestream
 
 import (
 	"better-media/internal/database"
+	"better-media/internal/dispatcher"
 	"better-media/internal/storage"
+	"better-media/pkg/models"
 	"context"
 	"log"
 	"os"
@@ -15,13 +17,15 @@ type Manager struct {
 	RTMPServer *RTMPServer
 	S3Client   *storage.S3Client
 	DB         *database.DB
+	Dispatcher dispatcher.JobDispatcher
 }
 
 // Create new livestream manager
-func NewManager(rtmpPort int, outputBase string, s3Client *storage.S3Client, db *database.DB) *Manager {
+func NewManager(rtmpPort int, outputBase string, s3Client *storage.S3Client, db *database.DB, disp dispatcher.JobDispatcher) *Manager {
 	m := &Manager{
-		S3Client: s3Client,
-		DB:       db,
+		S3Client:   s3Client,
+		DB:         db,
+		Dispatcher: disp,
 	}
 	rtmpServer := NewRTMPServer(rtmpPort, outputBase)
 
@@ -56,7 +60,7 @@ func (m *Manager) uploadRecording(streamKey, outputDir string) {
 		return
 	}
 	videoID := uuid.New().String()
-	objectKey := filepath.Join(videoID, "recording.mkv")
+	objectKey := filepath.Join(videoID, "source", "recording.mkv")
 
 	// Upload to S3
 	if err := m.S3Client.UploadFile(context.Background(), recordingPath, objectKey); err != nil {
@@ -67,7 +71,21 @@ func (m *Manager) uploadRecording(streamKey, outputDir string) {
 	log.Printf("[LivestreamManager] Recording uploaded: %s", objectKey)
 	log.Printf("[LivestreamManager] Video ID: %s", videoID)
 
-	// TODO:  trigger transcoding job to convert MKV → HLS for VOD playback . AND DB update, for future
+	// transcode
+	if m.Dispatcher != nil {
+		payload := models.VideoEncodingPayload{
+			VideoID:     videoID,
+			InputFile:   "recording.mkv",
+			Resolutions: []int{360, 720},
+		}
+		jobID, err := m.Dispatcher.Dispatch(context.Background(), payload)
+		if err != nil {
+			log.Printf("[LivestreamManager] Failed to dispatch transcoding: %v", err)
+		} else {
+			log.Printf("[LivestreamManager] Transcoding job started: %s", jobID)
+		}
+	}
+
 	os.RemoveAll(outputDir)
 }
 
