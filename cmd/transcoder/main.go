@@ -53,6 +53,7 @@ func processTranscode(req models.TranscodeRequest) {
 		VideoID:     req.VideoID,
 		InputFile:   "", // we are using the url directly
 		Resolutions: req.Resolutions,
+		Transcribe:  req.Transcribe,
 	}
 
 	pipeline, err := transcoder.NewEncodingPipeline(payload)

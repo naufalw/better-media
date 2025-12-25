@@ -83,11 +83,12 @@ func main() {
 
 		v1.GET("/videos/:videoId", api.handleGetVideoDetails)
 		v1.GET("/videos/:videoId/playback/*assetPath", api.handlePlaybackProxy)
+		v1.GET("/videos/:videoId/thumbnail/:size", api.handleGetThumbnail)
+		v1.GET("/videos/:videoId/subtitles", api.handleGetSubtitles)
 
 		v1.POST("/callbacks/:jobId/presign-upload", api.handlePresignUpload)
 		v1.POST("/callbacks/:jobId/status", api.handleWorkerStatusUpdate)
 		v1.POST("/callbacks/:jobId/progress", api.handleWorkerProgressUpdate)
-		v1.GET("/videos/:videoId/thumbnail/:size", api.handleGetThumbnail)
 	}
 
 	router.Run(":8080")
@@ -333,5 +334,16 @@ func (api *API) handleGetThumbnail(c *gin.Context) {
 		return
 	}
 
+	c.Redirect(http.StatusTemporaryRedirect, presigned.URL)
+}
+
+func (api *API) handleGetSubtitles(c *gin.Context) {
+	videoID := c.Param("videoId")
+	objectKey := fmt.Sprintf("%s/subtitles/subtitles.vtt", videoID)
+	presigned, err := api.S3Client.GeneratePresignedGet(c.Request.Context(), objectKey, time.Hour)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Subtitles not found"})
+		return
+	}
 	c.Redirect(http.StatusTemporaryRedirect, presigned.URL)
 }
