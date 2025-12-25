@@ -18,4 +18,7 @@ type Uploader interface {
 
 	// NotifyFailed signals that encoding failed
 	NotifyFailed(errMsg string) error
+
+	// UpdateProgress changes the progress of the encoding job
+	UpdateProgress(percent int) error
 }

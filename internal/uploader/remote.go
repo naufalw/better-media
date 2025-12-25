@@ -143,3 +143,22 @@ func (u *RemoteUploader) NotifyFailed(errMsg string) error {
 	log.Printf("[%s] Notifying API: failed - %s", u.jobID, errMsg)
 	return u.updateStatus("failed", &errMsg)
 }
+
+func (u *RemoteUploader) UpdateProgress(percent int) error {
+	statusURL := fmt.Sprintf("%s/v1/callbacks/%s/progress", u.callbackURL, u.jobID)
+
+	body := map[string]int{"progress": percent}
+	reqBody, _ := json.Marshal(body)
+
+	resp, err := u.httpClient.Post(statusURL, "application/json", bytes.NewReader(reqBody))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("progress update failed with status %d", resp.StatusCode)
+	}
+
+	return nil
+}
