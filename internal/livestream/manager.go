@@ -71,6 +71,8 @@ func (m *Manager) uploadRecording(streamKey, outputDir string) {
 	log.Printf("[LivestreamManager] Recording uploaded: %s", objectKey)
 	log.Printf("[LivestreamManager] Video ID: %s", videoID)
 
+	m.DB.CreateVideo(videoID, "Livestream Recording", "livestream")
+
 	// transcode
 	if m.Dispatcher != nil {
 		payload := models.VideoEncodingPayload{

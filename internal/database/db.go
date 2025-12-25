@@ -50,6 +50,14 @@ func migrate(db *sql.DB) error {
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 
+	CREATE TABLE IF NOT EXISTS videos (
+		id TEXT PRIMARY KEY,
+		title TEXT,
+		status TEXT DEFAULT 'processing',
+		source TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
 	`
 
 	_, err := db.Exec(schema)

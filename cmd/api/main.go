@@ -90,6 +90,7 @@ func main() {
 		v1.POST("/jobs/transcoding", api.handleCreateTranscodingJob)
 		v1.GET("/jobs/:jobId", api.handleGetJobStatus)
 
+		v1.GET("/videos", api.handleListVideos)
 		v1.GET("/videos/:videoId", api.handleGetVideoDetails)
 		v1.GET("/videos/:videoId/playback/*assetPath", api.handlePlaybackProxy)
 		v1.GET("/videos/:videoId/thumbnail/:size", api.handleGetThumbnail)
@@ -305,6 +306,16 @@ func (api *API) handleWorkerStatusUpdate(c *gin.Context) {
 		return
 	}
 
+	job, err := api.DB.GetJob(jobID)
+	if err == nil && job != nil {
+		switch req.Status {
+		case "completed":
+			api.DB.UpdateVideoStatus(job.VideoID, "ready")
+		case "failed":
+			api.DB.UpdateVideoStatus(job.VideoID, "failed")
+		}
+	}
+
 	log.Printf("[%s] Worker reported status: %s", jobID, req.Status)
 	c.JSON(http.StatusOK, gin.H{"status": "updated"})
 }
@@ -455,4 +466,28 @@ func (api *API) handleListStreamKeys(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"stream_keys": keys})
+}
+
+// Returns all videos
+func (api *API) handleListVideos(c *gin.Context) {
+	videos, err := api.DB.ListVideos()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list videos"})
+		return
+	}
+
+	result := make([]gin.H, 0, len(videos))
+	for _, v := range videos {
+		result = append(result, gin.H{
+			"id":            v.ID,
+			"title":         v.Title,
+			"status":        v.Status,
+			"source":        v.Source,
+			"created_at":    v.CreatedAt,
+			"playback_url":  fmt.Sprintf("/v1/videos/%s/playback/hls/master.m3u8", v.ID),
+			"thumbnail_url": fmt.Sprintf("/v1/videos/%s/thumbnail/320", v.ID),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"videos": result})
 }
