@@ -170,6 +170,10 @@ func (p *EncodingPipeline) encodeAndUploadRendition(
 	mu *sync.Mutex,
 	hlsBase string,
 ) error {
+	err := p.EncodeRendition(ctx, height)
+	if err != nil {
+		return fmt.Errorf("encoding %dp failed: %w", height, err)
+	}
 	log.Printf("[%s] Finished encoding %dp\n", p.Payload.VideoID, height)
 
 	err := p.EncodeRendition(ctx, height)
