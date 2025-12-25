@@ -84,6 +84,11 @@ func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error
 	if err := p.Probe(); err != nil {
 		return fmt.Errorf("failed to probe file: %w", err)
 	}
+
+	if err := p.GenerateThumbnails(ctx); err != nil {
+		log.Printf("[%s] Warning: Thumbnail generation failed: %v", p.Payload.VideoID, err)
+		// if thumbnail fail, just ignore
+	}
 	if err := p.Encode(ctx, s3c); err != nil {
 		return fmt.Errorf("failed to encode file: %w", err)
 	}
@@ -313,6 +318,41 @@ func (p *EncodingPipeline) EncodeMultipleRenditions(ctx context.Context, heights
 
 }
 
+// Get the thumbnail of the video by extracting image at 10% of the duration
+func (p *EncodingPipeline) GenerateThumbnails(ctx context.Context) error {
+	timestamp := p.SourceInfo.Duration * 0.1
+	if timestamp < 1 {
+		timestamp = 1
+	}
+
+	sizes := []int{320, 640, 1280}
+	thumbDir := filepath.Join(p.EncodedOutputPath, "thumbnails")
+	thumbDir := filepath.Join(p.EncodedOutputPath, "thumbnails")
+	if err := os.MkdirAll(thumbDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create thumbnail directory: %w", err)
+	}
+
+	for _, size := range sizes {
+		outPath := filepath.Join(thumbDir, fmt.Sprintf("thumb_%d.jpg", size))
+		args := []string{
+			"-ss", fmt.Sprintf("%.2f", timestamp),
+			"-i", p.StreamURL,
+			"-vframes", "1",
+			"-vf", fmt.Sprintf("scale=%d:-1", size),
+			"-q:v", "2",
+			outPath,
+		}
+
+		cmd := exec.CommandContext(ctx, "ffmpeg", args...)
+		if err := cmd.Run(); err != nil {
+			log.Printf("Failed to generate %dpx thumbnail: %v", size, err)
+			continue
+		}
+	}
+
+	return nil
+}
+
 func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) error {
 	log.Printf("[%s] Stage [3/5]: Encoding...\n", p.Payload.VideoID)
 	renditions := selectResolutions(p.SourceInfo.Height)
@@ -404,6 +444,25 @@ func (p *EncodingPipeline) uploadRendition(ctx context.Context, renditionDir str
 
 func (p *EncodingPipeline) Upload(ctx context.Context) error {
 	log.Printf("[%s] Stage [4/5]: Uploading to S3...\n", p.Payload.VideoID)
+
+	// thumbnail
+	thumbDir := filepath.Join(p.EncodedOutputPath, "thumbnails")
+	if _, err := os.Stat(thumbDir); err == nil {
+		if err := filepath.Walk(thumbDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() {
+				return nil
+			}
+			objectKey := filepath.Join(p.Payload.VideoID, "thumbnails", info.Name())
+			log.Printf("Uploading thumbnail %s", objectKey)
+			if err := p.Uploader.Upload(ctx, path, objectKey); err != nil {
+				log.Printf("Failed to upload thumbnail %s: %v", objectKey, err)
+				// Continue with other thumbnails
+			}
+			return nil
+		}); err != nil {
+			log.Printf("Error walking thumbnail directory: %v", err)
+		}
+	}
 
 	return filepath.Walk(p.EncodedOutputPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {

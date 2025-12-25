@@ -87,6 +87,7 @@ func main() {
 		v1.POST("/callbacks/:jobId/presign-upload", api.handlePresignUpload)
 		v1.POST("/callbacks/:jobId/status", api.handleWorkerStatusUpdate)
 		v1.POST("/callbacks/:jobId/progress", api.handleWorkerProgressUpdate)
+		v1.GET("/videos/:videoId/thumbnail/:size", api.handleGetThumbnail)
 	}
 
 	router.Run(":8080")
@@ -310,4 +311,20 @@ func (api *API) handleWorkerProgressUpdate(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "updated"})
+}
+
+// get video thumbnails
+func (api *API) handleGetThumbnail(c *gin.Context) {
+	videoID := c.Param("videoId")
+	size := c.Param("size") // "320", "640", "1280"
+
+	objectKey := fmt.Sprintf("%s/thumbnails/thumb_%s.jpg", videoID, size)
+
+	presigned, err := api.S3Client.GeneratePresignedGet(c.Request.Context(), objectKey, time.Hour)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Thumbnail not found"})
+		return
+	}
+
+	c.Redirect(http.StatusTemporaryRedirect, presigned.URL)
 }
