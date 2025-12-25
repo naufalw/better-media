@@ -85,7 +85,7 @@ func (p *OpenAICompatibleProvider) Transcribe(ctx context.Context, audioPath str
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024*1024)) // Limit to 1MB
 		return nil, fmt.Errorf("transcription API error %d: %s", resp.StatusCode, string(body))
 	}
 
