@@ -17,7 +17,9 @@ type StreamKey struct {
 // create a random stream key
 func GenerateStreamKey() string {
 	bytes := make([]byte, 16)
-	rand.Read(bytes)
+	if _, err := rand.Read(bytes); err != nil {
+		panic("failed to generate random bytes: " + err.Error())
+	}
 	return hex.EncodeToString(bytes)
 }
 
