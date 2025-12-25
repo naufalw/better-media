@@ -323,7 +323,10 @@ func (p *EncodingPipeline) GenerateThumbnails(ctx context.Context) error {
 
 	sizes := []int{320, 640, 1280}
 	thumbDir := filepath.Join(p.EncodedOutputPath, "thumbnails")
-	os.MkdirAll(thumbDir, 0o755)
+	thumbDir := filepath.Join(p.EncodedOutputPath, "thumbnails")
+	if err := os.MkdirAll(thumbDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create thumbnail directory: %w", err)
+	}
 
 	for _, size := range sizes {
 		outPath := filepath.Join(thumbDir, fmt.Sprintf("thumb_%d.jpg", size))
