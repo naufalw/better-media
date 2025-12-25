@@ -260,6 +260,11 @@ func (p *EncodingPipeline) EncodeMultipleRenditions(ctx context.Context, heights
 
 		args = append(args,
 			"-map", fmt.Sprintf("[%dp]", h),
+		)
+		if p.SourceInfo.HasAudio {
+			args = append(args, "-map", "0:a:0")
+		}
+		args = append(args,
 			"-c:v", encoder,
 			"-profile:v", "main",
 			"-pix_fmt", "yuv420p",
@@ -512,28 +517,7 @@ func (p *EncodingPipeline) Upload(ctx context.Context) error {
 		}
 	}
 
-	return filepath.Walk(p.EncodedOutputPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Do not upload master playlist here, as this will be automatically uploaded on updateMasterPlaylist
-		// which is called by the rendition threads
-		if !info.IsDir() && filepath.Base(path) != "master.m3u8" {
-			relativePath, err := filepath.Rel(p.EncodedOutputPath, path)
-			if err != nil {
-				return err
-			}
-
-			objectKey := filepath.Join(p.Payload.VideoID, relativePath)
-
-			log.Printf("Uploading %s to %s", path, objectKey)
-			if err := p.Uploader.Upload(ctx, path, objectKey); err != nil {
-				return fmt.Errorf("failed to upload %s: %w", info.Name(), err)
-			}
-		}
-		return nil
-	})
+	return nil
 }
 
 func (p *EncodingPipeline) EncodeRendition(ctx context.Context, height int) error {
