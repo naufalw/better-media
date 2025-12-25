@@ -33,6 +33,7 @@ type RTMPServer struct {
 	streamsMu     sync.RWMutex
 	OnStreamStart func(streamKey string, hlsPath string)
 	OnStreamEnd   func(streamKey string)
+	ValidateKey   func(key string) bool
 }
 
 func NewRTMPServer(port int, outputBase string) *RTMPServer {
@@ -91,12 +92,18 @@ func (s *RTMPServer) handleStream(c *rtmp.Conn, nc net.Conn) {
 	}
 
 	log.Printf("[RTMP] Stream starting: %s (publishing=%v)", streamKey, c.Publishing)
+	if s.ValidateKey != nil && !s.ValidateKey(streamKey) {
+		log.Printf("[RTMP] Invalid stream key: %s", streamKey)
+		return
+	}
+
 	if !c.Publishing {
 		log.Printf("[RTMP] Not a publish stream, ignoring")
 		return
 	}
 
 	outputDir := filepath.Join(s.OutputBase, streamKey)
+
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		log.Printf("[RTMP] Failed to create output dir: %v", err)
 		return

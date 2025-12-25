@@ -83,6 +83,11 @@ func main() {
 	rtmpServer.OnStreamEnd = func(streamKey string) {
 		log.Printf("[API] Live stream ended: %s", streamKey)
 	}
+
+	rtmpServer.ValidateKey = func(key string) bool {
+		return db.ValidateStreamKey(key)
+	}
+
 	if err := rtmpServer.Start(); err != nil {
 		log.Printf("Failed to start RTMP server: %v", err)
 	}
@@ -106,6 +111,9 @@ func main() {
 
 		v1.GET("/live", api.handleListLiveStreams)
 		v1.GET("/live/:streamKey/playback/*filePath", api.handleLivePlayback)
+
+		v1.POST("/stream-keys", api.handleCreateStreamKey)
+		v1.GET("/stream-keys", api.handleListStreamKeys)
 	}
 
 	router.Run(":8080")
@@ -412,4 +420,35 @@ func (api *API) handleLivePlayback(c *gin.Context) {
 	c.Header("Content-Type", contentType)
 	c.Header("Cache-Control", "no-cache")
 	c.File(fullPath)
+}
+
+// Create a new stream key
+func (api *API) handleCreateStreamKey(c *gin.Context) {
+	var req struct {
+		Name string `json:"name" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	key, err := api.DB.CreateStreamKey(req.Name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create stream key"})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{
+		"id":   key.ID,
+		"name": key.Name,
+		"key":  key.Key,
+	})
+}
+
+// Returns all stream keys
+func (api *API) handleListStreamKeys(c *gin.Context) {
+	keys, err := api.DB.ListStreamKeys()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list stream keys"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"stream_keys": keys})
 }
