@@ -240,7 +240,9 @@ func (p *EncodingPipeline) EncodeMultipleRenditions(ctx context.Context, heights
 	// process filepaths
 	for _, h := range heights {
 		renditionDir := filepath.Join(p.EncodedOutputPath, "hls", fmt.Sprintf("%dp", h))
-		os.MkdirAll(renditionDir, 0o755)
+		if err := os.MkdirAll(renditionDir, 0o755); err != nil {
+			return fmt.Errorf("failed to create rendition directory %s: %w", renditionDir, err)
+		}
 
 		playlistPath := filepath.Join(renditionDir, "playlist.m3u8")
 		segmentPattern := filepath.Join(renditionDir, "segment%03d.ts")
