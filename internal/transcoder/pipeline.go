@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -163,109 +162,202 @@ type completedRendition struct {
 	PlaylistPath string
 }
 
+// Encode, upload, and update the master playlist for a single rendition
+func (p *EncodingPipeline) encodeAndUploadRendition(
+	ctx context.Context,
+	height int,
+	completedRenditions *[]completedRendition,
+	mu *sync.Mutex,
+	hlsBase string,
+) error {
+	err := p.EncodeRendition(ctx, height)
+	if err != nil {
+		return fmt.Errorf("encoding %dp failed: %w", height, err)
+	}
+	log.Printf("[%s] Finished encoding %dp\n", p.Payload.VideoID, height)
+
+	err := p.EncodeRendition(ctx, height)
+	if err != nil {
+		return fmt.Errorf("encoding %dp failed: %w", height, err)
+	}
+
+	renditionDir := filepath.Join(p.EncodedOutputPath, "hls", fmt.Sprintf("%dp", height))
+	if err := p.uploadRendition(ctx, renditionDir, height); err != nil {
+		return fmt.Errorf("uploading %dp failed: %w", height, err)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	scaledWidth := (p.SourceInfo.Width * height) / p.SourceInfo.Height
+	if scaledWidth%2 != 0 {
+		scaledWidth++
+	}
+
+	bw := calculateRenditionBandwidth(renditionDir, p.SourceInfo.Duration)
+
+	*completedRenditions = append(*completedRenditions, completedRendition{
+		Height:       height,
+		Width:        scaledWidth,
+		Bandwidth:    bw,
+		PlaylistPath: fmt.Sprintf("%dp/playlist.m3u8", height),
+	})
+
+	if err := p.updateMasterPlaylist(ctx, hlsBase, *completedRenditions); err != nil {
+		return fmt.Errorf("updating master playlist failed: %w", err)
+	}
+
+	return nil
+}
+
+func (p *EncodingPipeline) EncodeMultipleRenditions(ctx context.Context, heights []int) error {
+	if len(heights) == 0 {
+		return nil
+	}
+
+	encoder := getBestVideoEncoder()
+	qualityArgs := getQualityArgs()
+
+	// we are building filter complex
+	var filterParts []string
+	splitCount := len(heights)
+
+	// split filter: [0:v]split=N[v1][v2][v3]...
+	splitOutputs := ""
+	for i := range heights {
+		splitOutputs += fmt.Sprintf("[v%d]", i)
+	}
+	filterParts = append(filterParts, fmt.Sprintf("[0:v]split=%d%s", splitCount, splitOutputs))
+
+	// scale filter : [v0]scale=-2:360[360p]; [v1]scale=-2:720[720p]...
+	for i, h := range heights {
+		filterParts = append(filterParts, fmt.Sprintf("[v%d]scale=-2:%d[%dp]", i, h, h))
+	}
+
+	// join filters
+	filterComplex := strings.Join(filterParts, "; ")
+	args := []string{
+		"-hide_banner", "-y",
+		"-i", p.StreamURL,
+		"-filter_complex", filterComplex,
+	}
+
+	// process filepaths
+	for _, h := range heights {
+		renditionDir := filepath.Join(p.EncodedOutputPath, "hls", fmt.Sprintf("%dp", h))
+		os.MkdirAll(renditionDir, 0o755)
+
+		playlistPath := filepath.Join(renditionDir, "playlist.m3u8")
+		segmentPattern := filepath.Join(renditionDir, "segment%03d.ts")
+
+		args = append(args,
+			"-map", fmt.Sprintf("[%dp]", h),
+			"-c:v", encoder,
+			"-profile:v", "main",
+			"-pix_fmt", "yuv420p",
+		)
+		args = append(args, qualityArgs...)
+		args = append(args,
+			"-c:a", "aac",
+			"-b:a", chooseAudioBitrate(h),
+			"-f", "hls",
+			"-hls_time", "4",
+			"-hls_playlist_type", "vod",
+			"-hls_list_size", "0",
+			"-hls_segment_filename", segmentPattern,
+			playlistPath,
+		)
+	}
+
+	if p.SourceInfo.HasAudio {
+		args = append(args, "-map", "0:a:0")
+	}
+
+	log.Printf("[%s] Transcoding for rest renditions %v: ffmpeg %s", p.Payload.VideoID, heights, strings.Join(args, " "))
+
+	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("multi encoding failed: %w\nOutput: %s", err, string(output))
+	}
+
+	return nil
+
+}
+
 func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) error {
 	log.Printf("[%s] Stage [3/5]: Encoding...\n", p.Payload.VideoID)
+	renditions := selectResolutions(p.SourceInfo.Height)
+	log.Printf("[%s] Starting encoding for renditions: %v\n", p.Payload.VideoID, renditions)
 
-	var renditionsToEncode []int
-	for _, res := range p.Payload.Resolutions {
-		if res <= p.SourceInfo.Height {
-			renditionsToEncode = append(renditionsToEncode, res)
-		}
-	}
-
-	sourceResInList := slices.Contains(renditionsToEncode, p.SourceInfo.Height)
-
-	if !sourceResInList {
-		renditionsToEncode = append(renditionsToEncode, p.SourceInfo.Height)
-	}
-
-	sort.Ints(renditionsToEncode)
-
-	if len(renditionsToEncode) == 0 {
-		return fmt.Errorf("no renditions to produce for source height %d", p.SourceInfo.Height)
-	}
-
-	var wg sync.WaitGroup // this is for encoding goroutines
-	var mu sync.Mutex     // this is for master playlist updating mutex
-
-	// limit the number of concurrent transcoding
-	maxConcurrent := 1
-	sem := make(chan struct{}, maxConcurrent)
-
+	var mu sync.Mutex
 	var completedRenditions []completedRendition
 	var encodingErrors []error
-	var firstRenditionNotified bool
 
 	hlsBase := filepath.Join(p.EncodedOutputPath, "hls")
 	if err := os.MkdirAll(hlsBase, 0o755); err != nil {
-		return fmt.Errorf("failed to create hls base dir: %w", err)
+		return fmt.Errorf("failed to create hls directory: %w", err)
 	}
 
-	log.Printf("[%s] Starting encoding for renditions: %v\n", p.Payload.VideoID, renditionsToEncode)
+	sort.Ints(renditions)
 
-	for _, height := range renditionsToEncode {
-		wg.Add(1)
-
-		go func(height int) {
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			defer wg.Done()
-
-			err := p.EncodeRendition(ctx, height)
-
-			if err != nil {
-				log.Printf("[%s] ERROR encoding %dp: %v\n", p.Payload.VideoID, height, err)
-				mu.Lock()
-				encodingErrors = append(encodingErrors, fmt.Errorf("failed on %dp: %w", height, err))
-				mu.Unlock()
-				return
-			} else {
-				renditionDir := filepath.Join(p.EncodedOutputPath, "hls", fmt.Sprintf("%dp", height))
-				if err := p.uploadRendition(ctx, renditionDir, height); err != nil {
-					log.Printf("[%s] ERROR uploading %dp rendition: %v", p.Payload.VideoID, height, err)
-				}
-			}
-
-			mu.Lock()
-			defer mu.Unlock()
-
-			scaledWidth := (p.SourceInfo.Width * height) / p.SourceInfo.Height
-			if scaledWidth%2 != 0 {
-				scaledWidth++
-			}
-
-			renditionDir := filepath.Join(p.EncodedOutputPath, "hls", fmt.Sprintf("%dp", height))
-			bw := calculateRenditionBandwidth(renditionDir, p.SourceInfo.Duration)
-
-			completedRenditions = append(completedRenditions, completedRendition{
-				Height:       height,
-				Width:        scaledWidth,
-				Bandwidth:    bw,
-				PlaylistPath: fmt.Sprintf("%dp/playlist.m3u8", height),
-			})
-
-			if err := p.updateMasterPlaylist(ctx, hlsBase, completedRenditions); err != nil {
-				log.Printf("[%s] ERROR updating master playlist after %dp rendition: %v\n", p.Payload.VideoID, height, err)
-				encodingErrors = append(encodingErrors, fmt.Errorf("failed to update master playlist for %dp: %w", height, err))
-			}
-
-			if !firstRenditionNotified && p.Uploader != nil {
-				firstRenditionNotified = true
+	//Encode lowest first for early playback
+	if len(renditions) > 0 {
+		firstHeight := renditions[0]
+		log.Printf("[%s] Encoding %dp first for early playback", p.Payload.VideoID, firstHeight)
+		if err := p.encodeAndUploadRendition(ctx, firstHeight, &completedRenditions, &mu, hlsBase); err != nil {
+			encodingErrors = append(encodingErrors, err)
+		} else {
+			// Notify playable after first rendition
+			if p.Uploader != nil {
 				p.Uploader.NotifyPlayable()
 			}
-		}(height)
-
+		}
 	}
+	// Encode remaining renditions using single ffmpeg with multiple outputs
+	if len(renditions) > 1 {
+	if len(renditions) > 1 {
+		remaining := renditions[1:]
 
-	wg.Wait()
+		log.Printf("[%s] single ffmpeg multi out encoding for: %v", p.Payload.VideoID, remaining)
 
-	if len(encodingErrors) > 0 {
-		return fmt.Errorf("encountered %d error(s) during encoding: %v", len(encodingErrors), encodingErrors)
+		if err := p.EncodeMultipleRenditions(ctx, remaining); err != nil {
+			encodingErrors = append(encodingErrors, err)
+		} else {
+			for _, height := range remaining {
+				renditionDir := filepath.Join(p.EncodedOutputPath, "hls", fmt.Sprintf("%dp", height))
+
+				if err := p.uploadRendition(ctx, renditionDir, height); err != nil {
+					encodingErrors = append(encodingErrors, err)
+					continue
+				}
+
+				scaledWidth := (p.SourceInfo.Width * height) / p.SourceInfo.Height
+				if scaledWidth%2 != 0 {
+					scaledWidth++
+				}
+				bw := calculateRenditionBandwidth(renditionDir, p.SourceInfo.Duration)
+
+				mu.Lock()
+				completedRenditions = append(completedRenditions, completedRendition{
+					Height:       height,
+					Width:        scaledWidth,
+					Bandwidth:    bw,
+					PlaylistPath: fmt.Sprintf("%dp/playlist.m3u8", height),
+				})
+				if err := p.updateMasterPlaylist(ctx, hlsBase, completedRenditions); err != nil {
+					encodingErrors = append(encodingErrors, err)
+				}
+				mu.Unlock()
+			}
+		}
 	}
 
 	log.Printf("[%s] Stage [3/5]: All encoding tasks finished.\n", p.Payload.VideoID)
+	if len(encodingErrors) > 0 {
+		return fmt.Errorf("encountered %d error(s) during encoding: %v", len(encodingErrors), encodingErrors)
+	}
 	return nil
-
 }
 
 func (p *EncodingPipeline) uploadRendition(ctx context.Context, renditionDir string, height int) error {

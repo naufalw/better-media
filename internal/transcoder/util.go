@@ -77,3 +77,28 @@ func getQualityArgs() []string {
 		return []string{"-crf", "23"}
 	}
 }
+
+func selectResolutions(sourceHeight int) []int {
+
+	standardResolutions := []int{360, 480, 720, 1080, 1440, 2160}
+
+	var selected []int
+	for _, res := range standardResolutions {
+		if res <= sourceHeight {
+			selected = append(selected, res)
+		}
+	}
+
+	included := false
+	for _, res := range selected {
+		if res == sourceHeight {
+			included = true
+			break
+		}
+	}
+	if !included {
+		selected = append(selected, sourceHeight)
+	}
+
+	return selected
+}
