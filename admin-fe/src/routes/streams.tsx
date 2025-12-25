@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Plus, Copy, Loader2 } from "lucide-react";
+import { Copy, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 export const Route = createFileRoute("/streams")({
@@ -10,16 +10,15 @@ export const Route = createFileRoute("/streams")({
 });
 
 interface StreamKey {
-  id: string;
-  name: string;
-  key: string;
-  created_at: string;
+  ID: string;
+  Name: string;
+  Key: string;
+  CreatedAt: string;
 }
 
 function StreamsPage() {
   const queryClient = useQueryClient();
   const [newKeyName, setNewKeyName] = useState("");
-  const [isCreating, setIsCreating] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["stream-keys"],
@@ -31,7 +30,6 @@ function StreamsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stream-keys"] });
       setNewKeyName("");
-      setIsCreating(false);
     },
   });
 
@@ -56,6 +54,7 @@ function StreamsPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Create Form */}
           <div className="bg-zinc-900/30 border border-zinc-800 rounded-lg p-4">
+            {/* Input field code ... (unchanged) */}
             <div className="flex gap-3">
               <input
                 type="text"
@@ -89,24 +88,24 @@ function StreamsPage() {
             <div className="space-y-3">
               {streamKeys.map((key) => (
                 <div
-                  key={key.id}
+                  key={key.ID}
                   className="bg-zinc-900/20 border border-zinc-800 rounded-lg p-4 flex items-center justify-between group"
                 >
                   <div>
-                    <div className="font-medium text-white text-sm">{key.name}</div>
+                    <div className="font-medium text-white text-sm">{key.Name}</div>
                     <div className="text-xs text-zinc-500 mt-0.5 font-mono opacity-60">
-                      Created {new Date(key.created_at).toLocaleDateString()}
+                      Created {new Date(key.CreatedAt).toLocaleDateString()}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <code className="px-2 py-1 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-400 font-mono">
-                      {key.key}
+                      {key.Key}
                     </code>
                     <Button
                       size="icon"
                       variant="ghost"
                       className="h-7 w-7 text-zinc-500 hover:text-white"
-                      onClick={() => copyToClipboard(key.key)}
+                      onClick={() => copyToClipboard(key.Key)}
                     >
                       <Copy className="w-3.5 h-3.5" />
                     </Button>

@@ -1,4 +1,6 @@
 *.env
 tmp/
 data/
-web-tester/
+web-tester/*
+cmd/api/dist
+.DS_Store

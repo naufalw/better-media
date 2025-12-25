@@ -3,7 +3,7 @@ import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Upload as UploadIcon, Loader2, FileVideo, Check, X, RefreshCcw } from "lucide-react";
+import { Upload as UploadIcon, FileVideo, Check, X } from "lucide-react";
 
 export const Route = createFileRoute("/upload")({
   component: UploadPage,
@@ -98,7 +98,7 @@ function UploadPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="max-w-3xl space-y-8">
       <div>
         <h1 className="text-xl font-semibold text-white">Upload Media</h1>
         <p className="text-sm text-zinc-500 mt-1">
