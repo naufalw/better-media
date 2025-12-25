@@ -78,9 +78,10 @@ func main() {
 	// livestream manager
 	lsManager := livestream.NewManager(1935, "./data/streams", s3Client, db)
 	if err := lsManager.Start(); err != nil {
-		log.Printf("Failed to start livestream manager: %v", err)
+		log.Printf("Failed to start livestream manager: %v (livestream features disabled)", err)
+	} else {
+		api.LivestreamManager = lsManager
 	}
-	api.LivestreamManager = lsManager
 
 	// Version 1
 	v1 := router.Group("/v1")
