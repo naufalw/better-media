@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type StreamKey struct {
@@ -25,7 +27,7 @@ func GenerateStreamKey() string {
 
 // creates a new stream key
 func (db *DB) CreateStreamKey(name string) (*StreamKey, error) {
-	id := GenerateStreamKey()[:8]
+	id := uuid.New().String()
 	key := GenerateStreamKey()
 	query := `INSERT INTO stream_keys (id, name, key, active) VALUES (?, ?, ?, 1)`
 	_, err := db.Exec(query, id, name, key)
