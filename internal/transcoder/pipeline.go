@@ -443,14 +443,20 @@ func (p *EncodingPipeline) Upload(ctx context.Context) error {
 	// thumbnail
 	thumbDir := filepath.Join(p.EncodedOutputPath, "thumbnails")
 	if _, err := os.Stat(thumbDir); err == nil {
-		filepath.Walk(thumbDir, func(path string, info os.FileInfo, err error) error {
+		if err := filepath.Walk(thumbDir, func(path string, info os.FileInfo, err error) error {
 			if err != nil || info.IsDir() {
 				return nil
 			}
 			objectKey := filepath.Join(p.Payload.VideoID, "thumbnails", info.Name())
 			log.Printf("Uploading thumbnail %s", objectKey)
-			return p.Uploader.Upload(ctx, path, objectKey)
-		})
+			if err := p.Uploader.Upload(ctx, path, objectKey); err != nil {
+				log.Printf("Failed to upload thumbnail %s: %v", objectKey, err)
+				// Continue with other thumbnails
+			}
+			return nil
+		}); err != nil {
+			log.Printf("Error walking thumbnail directory: %v", err)
+		}
 	}
 
 	return filepath.Walk(p.EncodedOutputPath, func(path string, info os.FileInfo, err error) error {
