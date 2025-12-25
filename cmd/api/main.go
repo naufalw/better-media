@@ -3,6 +3,7 @@ package main
 import (
 	"better-media/internal/database"
 	"better-media/internal/dispatcher"
+	"better-media/internal/livestream"
 	"better-media/internal/storage"
 	"better-media/pkg/models"
 	"bufio"
@@ -74,6 +75,14 @@ func main() {
 		DB:         db,
 	}
 
+	// livestream manager
+	lsManager := livestream.NewManager(1935, "./data/streams", s3Client, db)
+	if err := lsManager.Start(); err != nil {
+		log.Printf("Failed to start livestream manager: %v (livestream features disabled)", err)
+	} else {
+		api.LivestreamManager = lsManager
+	}
+
 	// Version 1
 	v1 := router.Group("/v1")
 	{
@@ -89,15 +98,22 @@ func main() {
 		v1.POST("/callbacks/:jobId/presign-upload", api.handlePresignUpload)
 		v1.POST("/callbacks/:jobId/status", api.handleWorkerStatusUpdate)
 		v1.POST("/callbacks/:jobId/progress", api.handleWorkerProgressUpdate)
+
+		v1.GET("/live", api.handleListLiveStreams)
+		v1.GET("/live/:streamKey/playback/*filePath", api.handleLivePlayback)
+
+		v1.POST("/stream-keys", api.handleCreateStreamKey)
+		v1.GET("/stream-keys", api.handleListStreamKeys)
 	}
 
 	router.Run(":8080")
 }
 
 type API struct {
-	S3Client   *storage.S3Client
-	Dispatcher dispatcher.JobDispatcher
-	DB         *database.DB
+	S3Client          *storage.S3Client
+	Dispatcher        dispatcher.JobDispatcher
+	DB                *database.DB
+	LivestreamManager *livestream.Manager
 }
 
 func (api *API) handleCreateUpload(c *gin.Context) {
@@ -347,4 +363,96 @@ func (api *API) handleGetSubtitles(c *gin.Context) {
 		return
 	}
 	c.Redirect(http.StatusTemporaryRedirect, presigned.URL)
+}
+
+// Return all active live streams
+func (api *API) handleListLiveStreams(c *gin.Context) {
+	if api.LivestreamManager == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "RTMP server not running"})
+		return
+	}
+	streams := api.LivestreamManager.GetActiveStreams()
+	streamInfos := make([]gin.H, 0, len(streams))
+	for _, key := range streams {
+		stream := api.LivestreamManager.GetStream(key)
+		if stream != nil {
+			streamInfos = append(streamInfos, gin.H{
+				"key":        key,
+				"started_at": stream.StartedAt,
+				"hls_url":    fmt.Sprintf("/v1/live/%s/playback/index.m3u8", key),
+			})
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"streams": streamInfos})
+}
+
+// Serves HLS files for live stream
+func (api *API) handleLivePlayback(c *gin.Context) {
+	streamKey := c.Param("streamKey")
+	filePath := c.Param("filePath")
+
+	if len(filePath) > 0 && filePath[0] == '/' {
+		filePath = filePath[1:]
+
+	}
+
+	cleanPath := filepath.Clean(filePath)
+	if strings.Contains(cleanPath, "..") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid path"})
+		return
+	}
+
+	fullPath := filepath.Join("./data/streams", streamKey, cleanPath)
+
+	baseDir := filepath.Join("./data/streams", streamKey)
+	if !strings.HasPrefix(filepath.Clean(fullPath), filepath.Clean(baseDir)) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid path"})
+		return
+	}
+
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return
+	}
+
+	contentType := "application/octet-stream"
+	if strings.HasSuffix(filePath, ".m3u8") {
+		contentType = "application/vnd.apple.mpegurl"
+	} else if strings.HasSuffix(filePath, ".ts") {
+		contentType = "video/mp2t"
+	}
+	c.Header("Content-Type", contentType)
+	c.Header("Cache-Control", "no-cache")
+	c.File(fullPath)
+}
+
+// Create a new stream key
+func (api *API) handleCreateStreamKey(c *gin.Context) {
+	var req struct {
+		Name string `json:"name" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	key, err := api.DB.CreateStreamKey(req.Name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create stream key"})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{
+		"id":   key.ID,
+		"name": key.Name,
+		"key":  key.Key,
+	})
+}
+
+// Returns all stream keys
+func (api *API) handleListStreamKeys(c *gin.Context) {
+	keys, err := api.DB.ListStreamKeys()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list stream keys"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"stream_keys": keys})
 }

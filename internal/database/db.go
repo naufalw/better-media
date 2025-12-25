@@ -41,6 +41,15 @@ func migrate(db *sql.DB) error {
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
+
+	CREATE TABLE IF NOT EXISTS stream_keys (
+		id TEXT PRIMARY KEY,
+		name TEXT NOT NULL,
+		key TEXT UNIQUE NOT NULL,
+		active INTEGER DEFAULT 1,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
 	`
 
 	_, err := db.Exec(schema)
