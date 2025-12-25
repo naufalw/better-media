@@ -314,7 +314,8 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 			}
 		}
 	}
-	// Encode rest concurrently
+	// Encode remaining renditions using single ffmpeg with multiple outputs
+	if len(renditions) > 1 {
 	if len(renditions) > 1 {
 		remaining := renditions[1:]
 
