@@ -200,8 +200,11 @@ func (s *RTMPServer) handleStream(c *rtmp.Conn, nc net.Conn) {
 	}
 	stdin.Close()
 	cmd.Wait()
+	if err := cmd.Wait(); err != nil {
+		log.Printf("[RTMP] FFmpeg exited with error for stream %s: %v", streamKey, err)
+	}
 
-	// trigger recording
+	// trigger save recording (its already piped from ffmpeg)
 	if s.OnRecordReady != nil {
 		s.OnRecordReady(streamKey, outputDir)
 	}
