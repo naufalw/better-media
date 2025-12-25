@@ -270,9 +270,13 @@ func (p *EncodingPipeline) EncodeMultipleRenditions(ctx context.Context, heights
 			"-pix_fmt", "yuv420p",
 		)
 		args = append(args, qualityArgs...)
+		if p.SourceInfo.HasAudio {
+			args = append(args,
+				"-c:a", "aac",
+				"-b:a", chooseAudioBitrate(h),
+			)
+		}
 		args = append(args,
-			"-c:a", "aac",
-			"-b:a", chooseAudioBitrate(h),
 			"-f", "hls",
 			"-hls_time", "4",
 			"-hls_playlist_type", "vod",
@@ -280,10 +284,6 @@ func (p *EncodingPipeline) EncodeMultipleRenditions(ctx context.Context, heights
 			"-hls_segment_filename", segmentPattern,
 			playlistPath,
 		)
-	}
-
-	if p.SourceInfo.HasAudio {
-		args = append(args, "-map", "0:a:0")
 	}
 
 	log.Printf("[%s] Transcoding for rest renditions %v: ffmpeg %s", p.Payload.VideoID, heights, strings.Join(args, " "))
