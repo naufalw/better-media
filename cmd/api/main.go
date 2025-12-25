@@ -393,8 +393,22 @@ func (api *API) handleLivePlayback(c *gin.Context) {
 
 	if len(filePath) > 0 && filePath[0] == '/' {
 		filePath = filePath[1:]
+
 	}
-	fullPath := filepath.Join("./data/streams", streamKey, filePath)
+
+	cleanPath := filepath.Clean(filePath)
+	if strings.Contains(cleanPath, "..") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid path"})
+		return
+	}
+
+	fullPath := filepath.Join("./data/streams", streamKey, cleanPath)
+
+	baseDir := filepath.Join("./data/streams", streamKey)
+	if !strings.HasPrefix(filepath.Clean(fullPath), filepath.Clean(baseDir)) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid path"})
+		return
+	}
 
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
