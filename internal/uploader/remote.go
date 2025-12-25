@@ -156,5 +156,9 @@ func (u *RemoteUploader) UpdateProgress(percent int) error {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("progress update failed with status %d", resp.StatusCode)
+	}
+
 	return nil
 }

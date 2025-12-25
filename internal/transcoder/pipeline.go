@@ -181,6 +181,10 @@ func (p *EncodingPipeline) encodeAndUploadRendition(
 	mu *sync.Mutex,
 	hlsBase string,
 ) error {
+	err := p.EncodeRendition(ctx, height)
+	if err != nil {
+		return fmt.Errorf("encoding %dp failed: %w", height, err)
+	}
 	log.Printf("[%s] Finished encoding %dp\n", p.Payload.VideoID, height)
 
 	err := p.EncodeRendition(ctx, height)
@@ -413,7 +417,8 @@ func (p *EncodingPipeline) Encode(ctx context.Context, s3c *storage.S3Client) er
 			}
 		}
 	}
-	// Encode rest concurrently
+	// Encode remaining renditions using single ffmpeg with multiple outputs
+	if len(renditions) > 1 {
 	if len(renditions) > 1 {
 		remaining := renditions[1:]
 
