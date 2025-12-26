@@ -50,6 +50,7 @@ func (s *Server) registerRoutes() {
 		protected.GET("/videos", s.handleListVideos)
 		protected.GET("/videos/:videoId", s.handleGetVideoDetails)
 		protected.DELETE("/videos/:videoId", s.handleDeleteVideo)
+		protected.PATCH("/videos/:videoId/library", s.handleMoveVideoToLibrary)
 
 		// Livestream
 		protected.GET("/live", s.handleListLiveStreams)

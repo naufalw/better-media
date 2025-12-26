@@ -89,3 +89,10 @@ func (db *DB) DeleteVideo(id string) error {
 	_, err := db.Exec(query, id)
 	return err
 }
+
+// change which library the video is stored
+func (db *DB) UpdateVideoLibrary(videoID string, libraryID *string) error {
+	query := `UPDATE videos SET library_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+	_, err := db.Exec(query, libraryID, videoID)
+	return err
+}
