@@ -40,32 +40,14 @@ func migrate(db *sql.DB) error {
 		password_hash TEXT NOT NULL,
 		name TEXT,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		role TEXT DEFAULT 'member',  -- 'admin' or 'member'
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 
-	-- Organizations 
-	CREATE TABLE IF NOT EXISTS organizations (
-		id TEXT PRIMARY KEY,
-		name TEXT NOT NULL,
-		slug TEXT UNIQUE NOT NULL,
-		owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);
-
-	-- Organization members 
-	CREATE TABLE IF NOT EXISTS organization_members (
-		organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-		user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-		role TEXT NOT NULL DEFAULT 'member', -- 'owner', 'admin', 'member'
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		PRIMARY KEY (organization_id, user_id)
-	);
 
 	-- Library
 	CREATE TABLE IF NOT EXISTS libraries (
 		id TEXT PRIMARY KEY,
-		organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
 		name TEXT NOT NULL,
 		description TEXT,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -113,7 +95,6 @@ func migrate(db *sql.DB) error {
 	-- API Keys 
 	CREATE TABLE IF NOT EXISTS api_keys (
 		id TEXT PRIMARY KEY,
-		organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
 		name TEXT NOT NULL,
 		key_hash TEXT UNIQUE NOT NULL, -- hashed key, actual key shown only on creation
 		key_prefix TEXT NOT NULL, -- first 8 chars for identification (e.g., "bm_live_")
@@ -135,7 +116,6 @@ func migrate(db *sql.DB) error {
 	-- VOD Transcoding Settings
 	CREATE TABLE IF NOT EXISTS transcoding_presets (
 		id TEXT PRIMARY KEY,
-		organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE, -- NULL = global/system preset
 		name TEXT NOT NULL,
 		resolutions TEXT NOT NULL, -- JSON: ["1080p", "720p", "480p"]
 		video_codec TEXT DEFAULT 'h264',
@@ -149,10 +129,7 @@ func migrate(db *sql.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_stream_keys_library ON stream_keys(library_id);
 	CREATE INDEX IF NOT EXISTS idx_jobs_video ON jobs(video_id);
 	CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
-	CREATE INDEX IF NOT EXISTS idx_api_keys_org ON api_keys(organization_id);
 	CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
-	CREATE INDEX IF NOT EXISTS idx_libraries_org ON libraries(organization_id);
-	CREATE INDEX IF NOT EXISTS idx_org_members_user ON organization_members(user_id);
 	`
 
 	_, err := db.Exec(schema)

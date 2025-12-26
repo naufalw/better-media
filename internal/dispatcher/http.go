@@ -40,7 +40,8 @@ func (d *HTTPDispatcher) Dispatch(ctx context.Context, payload models.VideoEncod
 		return "", fmt.Errorf("failed to create job: %w", err)
 	}
 
-	d.db.CreateVideo(payload.VideoID, payload.InputFile, "upload")
+	// TODO: LIBRARY ID
+	d.db.CreateVideo(payload.VideoID, payload.InputFile, "upload", nil)
 
 	d.db.UpdateJobStatus(jobID, "processing", nil)
 
