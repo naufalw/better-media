@@ -71,7 +71,7 @@ function VideosPage() {
   return (
     <div className="h-full flex flex-col">
       {/* Page Header */}
-      <div className="flex items-center justify-between p-6 border-b border-zinc-900 bg-[#09090b]">
+      <div className="flex items-center justify-between p-8 border-b border-zinc-900">
         <div>
           <h1 className="text-xl font-semibold text-white">Videos</h1>
           <p className="text-sm text-zinc-500 mt-1">Manage and organize your video library</p>
@@ -154,7 +154,7 @@ function VideosPage() {
                 <table className="w-full text-sm text-left border-collapse">
                   <thead className="text-zinc-400 font-medium bg-[#09090b] sticky top-0 z-30 shadow-sm">
                     <tr>
-                      <th className="sticky left-0 z-20 bg-[#09090b] px-6 py-3 border-b border-zinc-900 min-w-[350px] max-w-[350px] shadow-[1px_0_0_0_#27272a]">
+                      <th className="sticky border-r left-0 z-20 bg-[#09090b] px-6 py-3 border-b border-zinc-900 min-w-[350px] max-w-[350px]">
                         Video
                       </th>
                       <th className="px-6 py-3 border-b border-zinc-900 min-w-[120px] bg-[#09090b]">
@@ -172,7 +172,7 @@ function VideosPage() {
                       <th className="px-6 py-3 border-b border-zinc-900 min-w-[150px] bg-[#09090b]">
                         Size
                       </th>
-                      <th className="px-6 py-3 border-b border-zinc-900 bg-[#09090b] text-right sticky right-0 z-20 shadow-[-1px_0_0_0_#27272a]">
+                      <th className="px-6 py-3 border-b border-l border-zinc-900 bg-[#09090b] text-right sticky right-0 z-20">
                         Action
                       </th>
                     </tr>
@@ -180,12 +180,12 @@ function VideosPage() {
                   <tbody className="divide-y divide-zinc-900 bg-[#09090b]">
                     {videos.map((video) => (
                       <tr key={video.id} className="hover:bg-zinc-900/50 transition-colors group">
-                        <td className="sticky left-0 z-10 bg-[#09090b] group-hover:bg-zinc-900 px-6 py-4 border-r border-zinc-900 max-w-[260px]">
+                        <td className="sticky left-0  z-10 bg-[#09090b] border-r border-zinc-900 group-hover:bg-zinc-900 px-6 py-4 max-w-[260px]">
                           <div className="flex items-center gap-3">
                             <Link
                               to="/video/$videoId"
                               params={{ videoId: video.id }}
-                              className="block w-20 aspect-video rounded-sm bg-zinc-900 overflow-hidden relative shrink-0 border border-zinc-800"
+                              className="block  w-20 aspect-video rounded-sm bg-zinc-900 overflow-hidden relative shrink-0 border border-zinc-800"
                             >
                               <img
                                 src={`${API_BASE}${video.thumbnail_url}`}
@@ -222,7 +222,7 @@ function VideosPage() {
                           {/* Mock Size */}
                           -- MB
                         </td>
-                        <td className="px-6 py-4 text-right sticky right-0 z-10 bg-[#09090b] group-hover:bg-zinc-900 border-l border-zinc-900">
+                        <td className="px-6 py-4 text-right sticky right-0 z-10 bg-[#09090b] border-l border-zinc-900 group-hover:bg-zinc-900">
                           <div className="flex items-center justify-end gap-3">
                             <Link
                               to="/video/$videoId"
@@ -251,8 +251,8 @@ function VideosPage() {
               </div>
             ) : (
               /* Grid View */
-              <div className="p-6 overflow-auto">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-6">
+              <div className="p-6 overflow-auto bg-[#09090b]">
+                <div className="grid grid-cols-2  md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-6">
                   {videos.map((video) => (
                     /* Existing Grid Item Code ... need to rewrite it since I replaced the whole block */
                     <div
