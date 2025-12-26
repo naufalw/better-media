@@ -82,7 +82,7 @@ func (s *Server) Run() error {
 }
 
 func (s *Server) Close() error {
-	if s.LivestreamManager != nil {
-	}
+	return s.DB.Close()
+}
 	return s.DB.Close()
 }
