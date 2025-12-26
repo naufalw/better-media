@@ -153,3 +153,84 @@ func (s *Server) handleSetupAdmin(c *gin.Context) {
 		"token": token,
 	})
 }
+
+// GET /v1/users (admin only)
+func (s *Server) handleListUsers(c *gin.Context) {
+	users, err := s.DB.ListUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list users"})
+		return
+	}
+
+	result := make([]gin.H, 0, len(users))
+	for _, u := range users {
+		result = append(result, gin.H{
+			"id":         u.ID,
+			"email":      u.Email,
+			"name":       u.Name,
+			"role":       u.Role,
+			"created_at": u.CreatedAt,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"users": result})
+}
+
+// PATCH /v1/users/:id/role (admin only)
+func (s *Server) handleUpdateUserRole(c *gin.Context) {
+	userID := c.Param("id")
+	var req struct {
+		Role string `json:"role" binding:"required,oneof=admin member"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := s.DB.UpdateUserRole(userID, req.Role); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update role"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Role updated"})
+}
+
+// DELETE /v1/users/:id (admin only)
+func (s *Server) handleDeleteUser(c *gin.Context) {
+	userID := c.Param("id")
+
+	currentUserID, _ := c.Get("user_id")
+	if userID == currentUserID.(string) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot delete yourself"})
+		return
+	}
+	if err := s.DB.DeleteUser(userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "User deleted"})
+}
+
+// POST /v1/auth/change-password (any authenticated user)
+func (s *Server) handleChangePassword(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	var req struct {
+		CurrentPassword string `json:"current_password" binding:"required"`
+		NewPassword     string `json:"new_password" binding:"required,min=8"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	user, err := s.DB.GetUserByID(userID.(string))
+	if err != nil || user == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+	if !database.VerifyPassword(user.PasswordHash, req.CurrentPassword) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Current password is incorrect"})
+		return
+	}
+	if err := s.DB.UpdateUserPassword(userID.(string), req.NewPassword); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Password updated"})
+}

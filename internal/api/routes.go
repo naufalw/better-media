@@ -55,6 +55,21 @@ func (s *Server) registerRoutes() {
 		protected.GET("/live", s.handleListLiveStreams)
 		protected.POST("/stream-keys", s.handleCreateStreamKey)
 		protected.GET("/stream-keys", s.handleListStreamKeys)
+
+		// API Keys
+		protected.POST("/api-keys", s.handleCreateAPIKey)
+		protected.GET("/api-keys", s.handleListAPIKeys)
+		protected.DELETE("/api-keys/:id", s.handleDeleteAPIKey)
+
+		admin := protected.Group("/")
+		admin.Use(middleware.RequireAdmin())
+		{
+			admin.GET("/users", s.handleListUsers)
+			admin.PATCH("/users/:id/role", s.handleUpdateUserRole)
+			admin.DELETE("/users/:id", s.handleDeleteUser)
+		}
+
+		protected.POST("/auth/change-password", s.handleChangePassword)
 	}
 
 	// Frontend

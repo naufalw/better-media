@@ -167,3 +167,45 @@ func (db *DB) CreateAdmin(email, password, name string) (*User, error) {
 		CreatedAt: time.Now(),
 	}, nil
 }
+
+// Get all users
+func (db *DB) ListUsers() ([]User, error) {
+	query := `SELECT id, email, password_hash, name, role, created_at, updated_at FROM users ORDER BY created_at DESC`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var users []User
+	for rows.Next() {
+		var u User
+		rows.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.Role, &u.CreatedAt, &u.UpdatedAt)
+		users = append(users, u)
+	}
+	return users, nil
+}
+
+// change role
+func (db *DB) UpdateUserRole(id, role string) error {
+	query := `UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+	_, err := db.Exec(query, role, id)
+	return err
+}
+
+// remove usr
+func (db *DB) DeleteUser(id string) error {
+	query := `DELETE FROM users WHERE id = ?`
+	_, err := db.Exec(query, id)
+	return err
+}
+
+// change user pw
+func (db *DB) UpdateUserPassword(id, newPassword string) error {
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	query := `UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+	_, err = db.Exec(query, string(hash), id)
+	return err
+}
