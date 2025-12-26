@@ -1,6 +1,7 @@
 package api
 
 import (
+	"better-media/internal/auth"
 	"better-media/internal/config"
 	"better-media/internal/database"
 	"better-media/internal/dispatcher"
@@ -20,6 +21,7 @@ type Server struct {
 	Dispatcher        dispatcher.JobDispatcher
 	LivestreamManager *livestream.Manager
 	Router            *gin.Engine
+	JWT               *auth.JWTManager
 }
 
 func NewServer(cfg *config.Config) (*Server, error) {
@@ -53,12 +55,15 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	corsConfig.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
 	router.Use(cors.New(corsConfig))
 
+	jwtManager := auth.NewJWTManager(cfg.JWTSecret, cfg.JWTExpiry)
+
 	server := &Server{
 		Config:     cfg,
 		DB:         db,
 		Storage:    s3Client,
 		Dispatcher: jobDispatcher,
 		Router:     router,
+		JWT:        jwtManager,
 	}
 
 	lsManager := livestream.NewManager(cfg.RTMPPort, cfg.StreamsPath, s3Client, db, jobDispatcher)

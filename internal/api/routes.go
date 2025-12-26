@@ -1,6 +1,7 @@
 package api
 
 import (
+	"better-media/internal/api/middleware"
 	_ "embed"
 	"net/http"
 	"strings"
@@ -11,38 +12,48 @@ import (
 //go:embed dist/index.html
 var indexHTML []byte
 
-// registerRoutes sets up all API routes
 func (s *Server) registerRoutes() {
 	v1 := s.Router.Group("/v1")
+
+	// Public
+
+	// Auth
+	v1.POST("/auth/register", s.handleRegister)
+	v1.POST("/auth/login", s.handleLogin)
+
+	// Playback (TEMPORARY)
+	v1.GET("/videos/:videoId/playback/*assetPath", s.handlePlaybackProxy)
+	v1.GET("/videos/:videoId/thumbnail/:size", s.handleGetThumbnail)
+	v1.GET("/videos/:videoId/subtitles", s.handleGetSubtitles)
+	v1.GET("/live/:streamKey/playback/*filePath", s.handleLivePlayback)
+
+	// Worker Callbacks (TEMPORARY)
+	v1.POST("/callbacks/:jobId/presign-upload", s.handlePresignUpload)
+	v1.POST("/callbacks/:jobId/status", s.handleWorkerStatusUpdate)
+	v1.POST("/callbacks/:jobId/progress", s.handleWorkerProgressUpdate)
+
+	// PROTECTED
+	protected := v1.Group("/")
+	protected.Use(middleware.RequireAuth(s.JWT))
 	{
-		// Upload & Transcoding
-		v1.POST("/uploads", s.handleCreateUpload)
-		v1.POST("/jobs/transcoding", s.handleCreateTranscodingJob)
-		v1.GET("/jobs/:jobId", s.handleGetJobStatus)
+		// Auth
+		protected.GET("/auth/me", s.handleGetCurrentUser)
 
 		// Videos
-		v1.GET("/videos", s.handleListVideos)
-		v1.GET("/videos/:videoId", s.handleGetVideoDetails)
-		v1.DELETE("/videos/:videoId", s.handleDeleteVideo)
-		v1.GET("/videos/:videoId/playback/*assetPath", s.handlePlaybackProxy)
-		v1.GET("/videos/:videoId/thumbnail/:size", s.handleGetThumbnail)
-		v1.GET("/videos/:videoId/subtitles", s.handleGetSubtitles)
-
-		// Worker Callbacks (internal)
-		v1.POST("/callbacks/:jobId/presign-upload", s.handlePresignUpload)
-		v1.POST("/callbacks/:jobId/status", s.handleWorkerStatusUpdate)
-		v1.POST("/callbacks/:jobId/progress", s.handleWorkerProgressUpdate)
+		protected.POST("/uploads", s.handleCreateUpload)
+		protected.POST("/jobs/transcoding", s.handleCreateTranscodingJob)
+		protected.GET("/jobs/:jobId", s.handleGetJobStatus)
+		protected.GET("/videos", s.handleListVideos)
+		protected.GET("/videos/:videoId", s.handleGetVideoDetails)
+		protected.DELETE("/videos/:videoId", s.handleDeleteVideo)
 
 		// Livestream
-		v1.GET("/live", s.handleListLiveStreams)
-		v1.GET("/live/:streamKey/playback/*filePath", s.handleLivePlayback)
-
-		// Stream Keys
-		v1.POST("/stream-keys", s.handleCreateStreamKey)
-		v1.GET("/stream-keys", s.handleListStreamKeys)
+		protected.GET("/live", s.handleListLiveStreams)
+		protected.POST("/stream-keys", s.handleCreateStreamKey)
+		protected.GET("/stream-keys", s.handleListStreamKeys)
 	}
 
-	// Front End
+	// Frontend
 	s.Router.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 
