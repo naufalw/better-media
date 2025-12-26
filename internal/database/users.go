@@ -17,6 +17,7 @@ type User struct {
 	Email        string
 	PasswordHash string
 	Name         string
+	Role         string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
@@ -51,9 +52,9 @@ func (db *DB) CreateUser(email, password, name string) (*User, error) {
 
 // get user by email address
 func (db *DB) GetUserByEmail(email string) (*User, error) {
-	query := `SELECT id, email, password_hash, name, created_at, updated_at FROM users WHERE email = ?`
+	query := `SELECT id, email, password_hash, name, role, created_at, updated_at FROM users WHERE email = ?`
 	var u User
-	err := db.QueryRow(query, email).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.CreatedAt, &u.UpdatedAt)
+	err := db.QueryRow(query, email).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.Role, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -65,9 +66,9 @@ func (db *DB) GetUserByEmail(email string) (*User, error) {
 
 // get user by user id
 func (db *DB) GetUserByID(id string) (*User, error) {
-	query := `SELECT id, email, password_hash, name, created_at, updated_at FROM users WHERE id = ?`
+	query := `SELECT id, email, password_hash, name, role, created_at, updated_at FROM users WHERE id = ?`
 	var u User
-	err := db.QueryRow(query, id).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.CreatedAt, &u.UpdatedAt)
+	err := db.QueryRow(query, id).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.Role, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -138,4 +139,31 @@ func (db *DB) DeleteSession(token string) error {
 	query := `DELETE FROM sessions WHERE token_hash = ?`
 	_, err := db.Exec(query, tokenHashStr)
 	return err
+}
+
+// Returns number of users in DB
+func (db *DB) CountUsers() (int, error) {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM users").Scan(&count)
+	return count, err
+}
+
+// Create a user with admin role
+func (db *DB) CreateAdmin(email, password, name string) (*User, error) {
+	id := uuid.New().String()
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	query := `INSERT INTO users (id, email, password_hash, name, role) VALUES (?, ?, ?, ?, 'admin')`
+	_, err = db.Exec(query, id, email, string(hash), name)
+	if err != nil {
+		return nil, err
+	}
+	return &User{
+		ID:        id,
+		Email:     email,
+		Name:      name,
+		CreatedAt: time.Now(),
+	}, nil
 }

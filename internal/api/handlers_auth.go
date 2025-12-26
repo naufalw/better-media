@@ -66,8 +66,8 @@ func (s *Server) handleLogin(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
-	// TODO: Get actual role from user
-	token, err := s.JWT.GenerateToken(user.ID, user.Email, "member")
+
+	token, err := s.JWT.GenerateToken(user.ID, user.Email, user.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
@@ -94,5 +94,62 @@ func (s *Server) handleGetCurrentUser(c *gin.Context) {
 		"id":    user.ID,
 		"email": user.Email,
 		"name":  user.Name,
+	})
+}
+
+// GET /v1/setup/status
+func (s *Server) handleSetupStatus(c *gin.Context) {
+	count, err := s.DB.CountUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"needs_setup": count == 0})
+}
+
+// POST /v1/setup/admin
+func (s *Server) handleSetupAdmin(c *gin.Context) {
+
+	// If user is more than 0 then setup is skipped
+	count, err := s.DB.CountUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		return
+	}
+	if count > 0 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Setup already completed"})
+		return
+	}
+
+	var req struct {
+		Email    string `json:"email" binding:"required,email"`
+		Password string `json:"password" binding:"required,min=8"`
+		Name     string `json:"name" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := s.DB.CreateAdmin(req.Email, req.Password, req.Name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create admin"})
+		return
+	}
+
+	token, err := s.JWT.GenerateToken(user.ID, user.Email, "admin")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"user": gin.H{
+			"id":    user.ID,
+			"email": user.Email,
+			"name":  user.Name,
+			"role":  "admin",
+		},
+		"token": token,
 	})
 }

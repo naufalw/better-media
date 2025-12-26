@@ -17,6 +17,10 @@ func (s *Server) registerRoutes() {
 
 	// Public
 
+	// Setup (this to setup the admin)
+	v1.GET("/setup/status", s.handleSetupStatus)
+	v1.POST("/setup/admin", s.handleSetupAdmin)
+
 	// Auth
 	v1.POST("/auth/register", s.handleRegister)
 	v1.POST("/auth/login", s.handleLogin)
