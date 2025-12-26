@@ -84,5 +84,3 @@ func (s *Server) Run() error {
 func (s *Server) Close() error {
 	return s.DB.Close()
 }
-	return s.DB.Close()
-}
