@@ -162,7 +162,7 @@ export function UploadDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mt-4">
+        <div className="mt-4 min-w-0">
           {state === "idle" && !file ? (
             <div
               onDrop={handleDrop}
@@ -195,12 +195,17 @@ export function UploadDialog({
                   <FileVideo className="w-5 h-5 text-zinc-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-white truncate">{file?.name}</span>
+                  <div className="flex items-center gap-3 mb-1">
+                    <span
+                      className="text-sm font-medium text-white truncate flex-1 min-w-0"
+                      title={file?.name}
+                    >
+                      {file?.name}
+                    </span>
                     <button
                       onClick={reset}
                       disabled={state !== "idle" && state !== "done" && state !== "error"}
-                      className="text-zinc-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="text-zinc-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                     >
                       <X className="w-4 h-4" />
                     </button>

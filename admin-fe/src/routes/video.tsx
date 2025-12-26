@@ -194,6 +194,7 @@ function VideosPage() {
                             <Link
                               to="/video/$videoId"
                               params={{ videoId: video.id }}
+                              search={{ view: viewMode }}
                               className="block  w-20 aspect-video rounded-sm bg-zinc-900 overflow-hidden relative shrink-0 border border-zinc-800"
                             >
                               <img
@@ -207,6 +208,7 @@ function VideosPage() {
                               <Link
                                 to="/video/$videoId"
                                 params={{ videoId: video.id }}
+                                search={{ view: viewMode }}
                                 className="font-medium text-zinc-200 hover:text-white hover:underline line-clamp-2 text-base"
                               >
                                 {video.title}
@@ -236,6 +238,7 @@ function VideosPage() {
                             <Link
                               to="/video/$videoId"
                               params={{ videoId: video.id }}
+                              search={{ view: viewMode }}
                               className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded transition-colors shadow-lg shadow-emerald-900/20"
                             >
                               View
@@ -272,6 +275,7 @@ function VideosPage() {
                         <Link
                           to="/video/$videoId"
                           params={{ videoId: video.id }}
+                          search={{ view: viewMode }}
                           className="block w-full h-full"
                         >
                           <img
@@ -294,6 +298,7 @@ function VideosPage() {
                           <Link
                             to="/video/$videoId"
                             params={{ videoId: video.id }}
+                            search={{ view: viewMode }}
                             className="font-medium text-sm text-zinc-200 line-clamp-2 hover:underline leading-snug"
                           >
                             {video.title}
