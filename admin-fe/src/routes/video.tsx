@@ -7,6 +7,11 @@ import { useState } from "react";
 import { UploadDialog } from "@/components/upload-dialog";
 
 export const Route = createFileRoute("/video")({
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      view: (search.view as "list" | "grid") || "list",
+    };
+  },
   component: VideosPage,
 });
 
@@ -21,6 +26,8 @@ interface Video {
 }
 
 function VideosPage() {
+  const { view: viewMode } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const queryClient = useQueryClient();
   const [droppedFile, setDroppedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -65,7 +72,9 @@ function VideosPage() {
     },
   });
 
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const setViewMode = (mode: "list" | "grid") => {
+    navigate({ search: (prev) => ({ ...prev, view: mode }) });
+  };
   const videos: Video[] = data?.videos || [];
 
   return (
