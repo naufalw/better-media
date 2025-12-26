@@ -167,10 +167,10 @@ export function UploadDialog({
             <div
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
-              className="border border-dashed border-zinc-800 rounded-lg p-10 text-center hover:bg-zinc-900/50 hover:border-zinc-700 transition-colors cursor-pointer bg-zinc-900/20"
+              className="border border-dashed border-zinc-800 p-10 text-center hover:bg-zinc-900/50 hover:border-zinc-700 transition-colors cursor-pointer bg-zinc-900/20"
               onClick={() => document.getElementById("dialog-file-upload")?.click()}
             >
-              <div className="w-12 h-12 bg-zinc-900 rounded-lg flex items-center justify-center mx-auto mb-4 border border-zinc-800">
+              <div className="w-12 h-12 bg-zinc-900 flex items-center justify-center mx-auto mb-4 border border-zinc-800">
                 <UploadIcon className="w-6 h-6 text-zinc-400" />
               </div>
               <h3 className="text-sm font-medium text-white">Click or drag video to upload</h3>
@@ -189,9 +189,9 @@ export function UploadDialog({
               />
             </div>
           ) : (
-            <div className="bg-zinc-900/30 border border-zinc-800 rounded-lg p-6">
+            <div className="bg-zinc-900/30 border border-zinc-800 p-6">
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-zinc-900 rounded flex items-center justify-center border border-zinc-800 shrink-0">
+                <div className="w-10 h-10 bg-zinc-900 flex items-center justify-center border border-zinc-800 shrink-0">
                   <FileVideo className="w-5 h-5 text-zinc-400" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -216,7 +216,7 @@ export function UploadDialog({
                           type="checkbox"
                           checked={transcribe}
                           onChange={(e) => setTranscribe(e.target.checked)}
-                          className="rounded border-zinc-700 bg-zinc-800 text-zinc-200 focus:ring-0 w-4 h-4"
+                          className="border-zinc-700 bg-zinc-800 text-zinc-200 focus:ring-0 w-4 h-4"
                         />
                         <span className="text-sm text-zinc-400 group-hover:text-zinc-300">
                           Generate AI Subtitles
@@ -241,7 +241,7 @@ export function UploadDialog({
                         <span className="capitalize">{state}...</span>
                         <span>{progress}%</span>
                       </div>
-                      <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                      <div className="h-1.5 w-full bg-zinc-800 overflow-hidden">
                         <div
                           className="h-full bg-emerald-500 transition-all duration-300 ease-out"
                           style={{ width: `${progress}%` }}

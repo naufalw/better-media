@@ -36,6 +36,8 @@ function VideosPage() {
   const handleOverlayDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Prevent flickering when dragging over children
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
     setIsDragging(false);
   };
 
@@ -116,7 +118,7 @@ function VideosPage() {
       >
         {isDragging && (
           <div
-            className="absolute inset-0 z-50 bg-[#09090b]/95 border border-zinc-800 m-2 rounded-lg flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-200"
+            className="absolute inset-0 z-[100] bg-[#09090b]/95 border border-zinc-800 m-2 flex flex-col items-center justify-start pt-[20vh] animate-in fade-in zoom-in-95 duration-200"
             onDragOver={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -124,10 +126,12 @@ function VideosPage() {
             onDragLeave={handleOverlayDragLeave}
             onDrop={handleDrop}
           >
-            <div className="bg-zinc-900 border border-zinc-700 p-4 rounded-full mb-4">
+            <div className="bg-zinc-900 border border-zinc-700 p-4 mb-4 pointer-events-none">
               <Upload className="w-8 h-8 text-white" />
             </div>
-            <p className="text-lg font-medium text-white">Drop video to upload</p>
+            <p className="text-lg font-medium text-white pointer-events-none">
+              Drop video to upload
+            </p>
           </div>
         )}
         {isLoading ? (
