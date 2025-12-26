@@ -9,31 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UploadRouteImport } from './routes/upload'
-import { Route as StreamsRouteImport } from './routes/streams'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as LiveRouteImport } from './routes/live'
+import { Route as VideoRouteImport } from './routes/video'
+import { Route as PaddedRouteImport } from './routes/_padded'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as VideoVideoIdRouteImport } from './routes/video.$videoId'
+import { Route as PaddedStreamsRouteImport } from './routes/_padded/streams'
+import { Route as PaddedSettingsRouteImport } from './routes/_padded/settings'
+import { Route as PaddedLiveRouteImport } from './routes/_padded/live'
+import { Route as PaddedVideoVideoIdRouteImport } from './routes/_padded/video.$videoId'
 
-const UploadRoute = UploadRouteImport.update({
-  id: '/upload',
-  path: '/upload',
+const VideoRoute = VideoRouteImport.update({
+  id: '/video',
+  path: '/video',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StreamsRoute = StreamsRouteImport.update({
-  id: '/streams',
-  path: '/streams',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LiveRoute = LiveRouteImport.update({
-  id: '/live',
-  path: '/live',
+const PaddedRoute = PaddedRouteImport.update({
+  id: '/_padded',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -41,95 +31,95 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VideoVideoIdRoute = VideoVideoIdRouteImport.update({
+const PaddedStreamsRoute = PaddedStreamsRouteImport.update({
+  id: '/streams',
+  path: '/streams',
+  getParentRoute: () => PaddedRoute,
+} as any)
+const PaddedSettingsRoute = PaddedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => PaddedRoute,
+} as any)
+const PaddedLiveRoute = PaddedLiveRouteImport.update({
+  id: '/live',
+  path: '/live',
+  getParentRoute: () => PaddedRoute,
+} as any)
+const PaddedVideoVideoIdRoute = PaddedVideoVideoIdRouteImport.update({
   id: '/video/$videoId',
   path: '/video/$videoId',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => PaddedRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/live': typeof LiveRoute
-  '/settings': typeof SettingsRoute
-  '/streams': typeof StreamsRoute
-  '/upload': typeof UploadRoute
-  '/video/$videoId': typeof VideoVideoIdRoute
+  '/video': typeof VideoRoute
+  '/live': typeof PaddedLiveRoute
+  '/settings': typeof PaddedSettingsRoute
+  '/streams': typeof PaddedStreamsRoute
+  '/video/$videoId': typeof PaddedVideoVideoIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/live': typeof LiveRoute
-  '/settings': typeof SettingsRoute
-  '/streams': typeof StreamsRoute
-  '/upload': typeof UploadRoute
-  '/video/$videoId': typeof VideoVideoIdRoute
+  '/video': typeof VideoRoute
+  '/live': typeof PaddedLiveRoute
+  '/settings': typeof PaddedSettingsRoute
+  '/streams': typeof PaddedStreamsRoute
+  '/video/$videoId': typeof PaddedVideoVideoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/live': typeof LiveRoute
-  '/settings': typeof SettingsRoute
-  '/streams': typeof StreamsRoute
-  '/upload': typeof UploadRoute
-  '/video/$videoId': typeof VideoVideoIdRoute
+  '/_padded': typeof PaddedRouteWithChildren
+  '/video': typeof VideoRoute
+  '/_padded/live': typeof PaddedLiveRoute
+  '/_padded/settings': typeof PaddedSettingsRoute
+  '/_padded/streams': typeof PaddedStreamsRoute
+  '/_padded/video/$videoId': typeof PaddedVideoVideoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/video'
     | '/live'
     | '/settings'
     | '/streams'
-    | '/upload'
     | '/video/$videoId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/live' | '/settings' | '/streams' | '/upload' | '/video/$videoId'
+  to: '/' | '/video' | '/live' | '/settings' | '/streams' | '/video/$videoId'
   id:
     | '__root__'
     | '/'
-    | '/live'
-    | '/settings'
-    | '/streams'
-    | '/upload'
-    | '/video/$videoId'
+    | '/_padded'
+    | '/video'
+    | '/_padded/live'
+    | '/_padded/settings'
+    | '/_padded/streams'
+    | '/_padded/video/$videoId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  LiveRoute: typeof LiveRoute
-  SettingsRoute: typeof SettingsRoute
-  StreamsRoute: typeof StreamsRoute
-  UploadRoute: typeof UploadRoute
-  VideoVideoIdRoute: typeof VideoVideoIdRoute
+  PaddedRoute: typeof PaddedRouteWithChildren
+  VideoRoute: typeof VideoRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/upload': {
-      id: '/upload'
-      path: '/upload'
-      fullPath: '/upload'
-      preLoaderRoute: typeof UploadRouteImport
+    '/video': {
+      id: '/video'
+      path: '/video'
+      fullPath: '/video'
+      preLoaderRoute: typeof VideoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/streams': {
-      id: '/streams'
-      path: '/streams'
-      fullPath: '/streams'
-      preLoaderRoute: typeof StreamsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/live': {
-      id: '/live'
-      path: '/live'
-      fullPath: '/live'
-      preLoaderRoute: typeof LiveRouteImport
+    '/_padded': {
+      id: '/_padded'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof PaddedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -139,23 +129,58 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/video/$videoId': {
-      id: '/video/$videoId'
+    '/_padded/streams': {
+      id: '/_padded/streams'
+      path: '/streams'
+      fullPath: '/streams'
+      preLoaderRoute: typeof PaddedStreamsRouteImport
+      parentRoute: typeof PaddedRoute
+    }
+    '/_padded/settings': {
+      id: '/_padded/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof PaddedSettingsRouteImport
+      parentRoute: typeof PaddedRoute
+    }
+    '/_padded/live': {
+      id: '/_padded/live'
+      path: '/live'
+      fullPath: '/live'
+      preLoaderRoute: typeof PaddedLiveRouteImport
+      parentRoute: typeof PaddedRoute
+    }
+    '/_padded/video/$videoId': {
+      id: '/_padded/video/$videoId'
       path: '/video/$videoId'
       fullPath: '/video/$videoId'
-      preLoaderRoute: typeof VideoVideoIdRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof PaddedVideoVideoIdRouteImport
+      parentRoute: typeof PaddedRoute
     }
   }
 }
 
+interface PaddedRouteChildren {
+  PaddedLiveRoute: typeof PaddedLiveRoute
+  PaddedSettingsRoute: typeof PaddedSettingsRoute
+  PaddedStreamsRoute: typeof PaddedStreamsRoute
+  PaddedVideoVideoIdRoute: typeof PaddedVideoVideoIdRoute
+}
+
+const PaddedRouteChildren: PaddedRouteChildren = {
+  PaddedLiveRoute: PaddedLiveRoute,
+  PaddedSettingsRoute: PaddedSettingsRoute,
+  PaddedStreamsRoute: PaddedStreamsRoute,
+  PaddedVideoVideoIdRoute: PaddedVideoVideoIdRoute,
+}
+
+const PaddedRouteWithChildren =
+  PaddedRoute._addFileChildren(PaddedRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  LiveRoute: LiveRoute,
-  SettingsRoute: SettingsRoute,
-  StreamsRoute: StreamsRoute,
-  UploadRoute: UploadRoute,
-  VideoVideoIdRoute: VideoVideoIdRoute,
+  PaddedRoute: PaddedRouteWithChildren,
+  VideoRoute: VideoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

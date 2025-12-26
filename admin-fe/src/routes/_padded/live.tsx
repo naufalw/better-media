@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, API_BASE } from "@/lib/api";
 import { Loader2, Signal } from "lucide-react";
 
-export const Route = createFileRoute("/live")({
+export const Route = createFileRoute("/_padded/live")({
   component: LivePage,
 });
 

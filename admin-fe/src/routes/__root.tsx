@@ -1,16 +1,7 @@
 import * as React from "react";
 import { Link, Outlet, createRootRoute } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import {
-  Film,
-  Radio,
-  Upload,
-  Tv,
-  Settings,
-  LayoutDashboard,
-  ChevronLeft,
-  Menu,
-} from "lucide-react";
+import { Film, Radio, Tv, Settings, LayoutDashboard, ChevronLeft, Menu } from "lucide-react";
 import { useState } from "react";
 
 export const Route = createRootRoute({
@@ -18,8 +9,8 @@ export const Route = createRootRoute({
 });
 
 const navItems = [
-  { to: "/", icon: Film, label: "Videos" },
-  { to: "/upload", icon: Upload, label: "Upload" },
+  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/video", icon: Film, label: "Videos" },
   { to: "/streams", icon: Radio, label: "Stream Keys" },
   { to: "/live", icon: Tv, label: "Live Now" },
 ];
@@ -111,7 +102,7 @@ function RootComponent() {
           isCollapsed ? "ml-16" : "ml-64"
         }`}
       >
-        <div className="max-w-7xl mx-auto p-8">
+        <div className="h-full w-full">
           <Outlet />
         </div>
       </main>

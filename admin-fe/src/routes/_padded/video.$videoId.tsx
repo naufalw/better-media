@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Trash2, Calendar, HardDrive, FileVideo, CheckCircle2 } from "lucide-react";
 import { Loader2 } from "lucide-react";
 
-export const Route = createFileRoute("/video/$videoId")({
+export const Route = createFileRoute("/_padded/video/$videoId")({
   component: VideoDetailPage,
 });
 
@@ -28,7 +28,7 @@ function VideoDetailPage() {
     mutationFn: api.deleteVideo,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["videos"] });
-      navigate({ to: "/" });
+      navigate({ to: "/video" });
     },
   });
 
@@ -44,7 +44,7 @@ function VideoDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <p className="text-zinc-500">Video not found.</p>
-        <Link to="/" className="text-white hover:underline">
+        <Link to="/video" className="text-white hover:underline">
           Go back home
         </Link>
       </div>
@@ -56,7 +56,7 @@ function VideoDetailPage() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link
-          to="/"
+          to="/video"
           className="p-2 -ml-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />

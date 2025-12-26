@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Copy, Loader2 } from "lucide-react";
 import { useState } from "react";
 
-export const Route = createFileRoute("/streams")({
+export const Route = createFileRoute("/_padded/streams")({
   component: StreamsPage,
 });
 
