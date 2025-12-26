@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"time"
 )
 
 // Config holds all application configuration
@@ -29,6 +30,10 @@ type Config struct {
 
 	// CORS
 	AllowedOrigins []string
+
+	// JWT
+	JWTSecret string
+	JWTExpiry time.Duration
 }
 
 // Load reads configuration from environment variables with sensible defaults
@@ -60,6 +65,10 @@ func Load() *Config {
 			"http://localhost:3000",
 			"http://localhost:5173",
 		},
+
+		// JWT
+		JWTSecret: getEnv("JWT_SECRET", "loll-nice-haha"),
+		JWTExpiry: parseDuration(getEnv("JWT_EXPIRY", "24h")),
 	}
 }
 
@@ -68,4 +77,12 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+func parseDuration(s string) time.Duration {
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 24 * time.Hour
+	}
+	return d
 }
