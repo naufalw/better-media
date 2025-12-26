@@ -61,6 +61,13 @@ func (s *Server) registerRoutes() {
 		protected.GET("/api-keys", s.handleListAPIKeys)
 		protected.DELETE("/api-keys/:id", s.handleDeleteAPIKey)
 
+		// Libraries
+		protected.POST("/libraries", s.handleCreateLibrary)
+		protected.GET("/libraries", s.handleListLibraries)
+		protected.GET("/libraries/:id", s.handleGetLibrary)
+		protected.PUT("/libraries/:id", s.handleUpdateLibrary)
+		protected.DELETE("/libraries/:id", s.handleDeleteLibrary)
+
 		admin := protected.Group("/")
 		admin.Use(middleware.RequireAdmin())
 		{
