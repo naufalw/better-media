@@ -3,6 +3,7 @@ package api
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"path"
@@ -192,12 +193,16 @@ func (s *Server) handleGetSubtitles(c *gin.Context) {
 	videoID := c.Param("videoId")
 	objectKey := fmt.Sprintf("%s/subtitles/subtitles.vtt", videoID)
 
-	presigned, err := s.Storage.GeneratePresignedGet(c.Request.Context(), objectKey, time.Hour)
+	content, err := s.Storage.GetObject(c.Request.Context(), objectKey)
 	if err != nil {
-		log.Printf("Error generating presigned URL for subtitles %s: %v", objectKey, err)
+		log.Printf("Error retrieving subtitles %s: %v", objectKey, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Subtitles not found"})
 		return
 	}
+	defer content.Close()
 
-	c.Redirect(http.StatusTemporaryRedirect, presigned.URL)
+	c.Header("Content-Type", "text/vtt")
+	if _, err := io.Copy(c.Writer, content); err != nil {
+		log.Printf("Error streaming subtitles: %v", err)
+	}
 }

@@ -20,7 +20,7 @@ function VideoDetailPage() {
     queryFn: () => api.getVideo(videoId),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status !== "completed" && status !== "failed" ? 550 : false;
+      return status !== "ready" && status !== "failed" ? 550 : false;
     },
   });
 
@@ -30,6 +30,19 @@ function VideoDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["library", libraryId] });
       navigate({ to: "/libraries/$libraryId", params: { libraryId }, search: { view: "list" } });
     },
+  });
+
+  const { data: transcription } = useQuery({
+    queryKey: ["transcription", videoId, video?.subtitle_url],
+    queryFn: async () => {
+      if (!video?.subtitle_url) return null;
+      const res = await fetch(`${API_BASE}${video.subtitle_url}`);
+      if (!res.ok) return null;
+      const text = await res.text();
+      // Display raw VTT content as requested
+      return text.trim();
+    },
+    enabled: !!video?.subtitle_url,
   });
 
   const formatFileSize = (bytes: number) => {
@@ -108,11 +121,13 @@ function VideoDetailPage() {
                   src={`${API_BASE}${video.playback_url}`}
                   poster={`${API_BASE}${video.thumbnail_url}`}
                 >
-                  {video.subtitle_url && (
+                  {video.subtitle_url && transcription && (
                     <track
                       kind="subtitles"
-                      src={`${API_BASE}${video.subtitle_url}`}
+                      src={URL.createObjectURL(new Blob([transcription], { type: "text/vtt" }))}
+                      srcLang="en"
                       label="English"
+                      default
                     />
                   )}
                 </video>
@@ -132,9 +147,16 @@ function VideoDetailPage() {
 
             <div className="bg-zinc-900/30 border border-zinc-800 rounded-lg p-6">
               <h3 className="font-medium text-white mb-4">Transcription</h3>
-              <div className="text-zinc-400 text-sm leading-relaxed">
-                {/* Placeholder for transcription */}
-                <p className="italic text-zinc-600">No transcription available yet.</p>
+              <div className="text-zinc-400 text-sm leading-relaxed max-h-60 overflow-y-auto font-mono whitespace-pre-wrap">
+                {transcription ? (
+                  <p>{transcription}</p>
+                ) : (
+                  <p className="italic text-zinc-600 font-sans">
+                    {video.transcription_status === "failed"
+                      ? "Transcription failed."
+                      : "No transcription available yet."}
+                  </p>
+                )}
               </div>
             </div>
           </div>
