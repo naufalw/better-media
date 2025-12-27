@@ -89,3 +89,27 @@ func (s *Server) handleWorkerProgressUpdate(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"status": "updated"})
 }
+
+// metadata update from workers
+func (s *Server) handleWorkerMetadataUpdate(c *gin.Context) {
+
+	var req struct {
+		VideoID          string `json:"video_id"`
+		DurationMs       int64  `json:"duration_ms"`
+		FileSizeBytes    int64  `json:"file_size_bytes"`
+		ResolutionWidth  int    `json:"resolution_width"`
+		ResolutionHeight int    `json:"resolution_height"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := s.DB.UpdateVideoMetadata(req.VideoID, req.DurationMs, req.FileSizeBytes, req.ResolutionWidth, req.ResolutionHeight); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update video metadata"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "updated"})
+}

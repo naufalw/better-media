@@ -20,6 +20,7 @@ interface UploadDialogProps {
   onOpenChange?: (open: boolean) => void;
   triggerClassName?: string;
   triggerSize?: "default" | "sm" | "lg" | "icon";
+  libraryId?: string;
 }
 
 export function UploadDialog({
@@ -27,6 +28,7 @@ export function UploadDialog({
   onOpenChange: parentOnOpenChange,
   triggerClassName,
   triggerSize = "default",
+  libraryId,
 }: UploadDialogProps = {}) {
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
@@ -59,7 +61,7 @@ export function UploadDialog({
       setProgress(0);
 
       // Step 1: Get presigned URL
-      const uploadData = await api.createUpload(file.name);
+      const uploadData = await api.createUpload(file.name, libraryId);
       const presignedUrl = uploadData.url;
       const vid = uploadData.videoId;
 
@@ -85,7 +87,7 @@ export function UploadDialog({
       setProgress(0);
 
       // Step 3: Start transcoding
-      const { job_id } = await api.startTranscoding(vid, file.name, transcribe);
+      const { job_id } = await api.startTranscoding(vid, file.name, libraryId, transcribe);
 
       // Step 4: Poll
       while (true) {
@@ -96,6 +98,9 @@ export function UploadDialog({
         if (job.status === "completed" || job.status === "playable" || job.status === "ready") {
           setState("done");
           queryClient.invalidateQueries({ queryKey: ["videos"] });
+          if (libraryId) {
+            queryClient.invalidateQueries({ queryKey: ["library", libraryId] });
+          }
           break;
         }
         if (job.status === "failed") {

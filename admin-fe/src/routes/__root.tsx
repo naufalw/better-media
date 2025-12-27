@@ -1,8 +1,21 @@
 import * as React from "react";
-import { Link, Outlet, createRootRoute } from "@tanstack/react-router";
+import { Link, Outlet, createRootRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { Film, Radio, Tv, Settings, LayoutDashboard, ChevronLeft, Menu } from "lucide-react";
-import { useState } from "react";
+import {
+  Film,
+  Radio,
+  Tv,
+  Settings,
+  LayoutDashboard,
+  ChevronLeft,
+  Menu,
+  Loader2,
+  Users,
+  LogOut,
+  Github,
+} from "lucide-react";
+import { useState, useEffect } from "react";
+import { AuthProvider, useAuth } from "../lib/auth";
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -10,13 +23,51 @@ export const Route = createRootRoute({
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/video", icon: Film, label: "Videos" },
+  { to: "/libraries", icon: Film, label: "Libraries" },
   { to: "/streams", icon: Radio, label: "Stream Keys" },
   { to: "/live", icon: Tv, label: "Live Now" },
 ];
 
 function RootComponent() {
+  return (
+    <AuthProvider>
+      <AppContent />
+      <TanStackRouterDevtools position="bottom-right" />
+    </AuthProvider>
+  );
+}
+
+function AppContent() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { user, isLoading, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const isPublicRoute = ["/login", "/setup"].includes(location.pathname);
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user && !isPublicRoute) {
+        navigate({ to: "/login" });
+      } else if (user && isPublicRoute) {
+        navigate({ to: "/" });
+      }
+    }
+  }, [user, isLoading, location.pathname, navigate, isPublicRoute]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#09090b] flex items-center justify-center text-zinc-200">
+        <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
+
+  if (isPublicRoute) {
+    return <Outlet />;
+  }
+
+  if (!user) return null; // Should redirect
 
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-200 flex font-sans antialiased selection:bg-emerald-500/30">
@@ -76,10 +127,48 @@ function RootComponent() {
               {!isCollapsed && <span>{item.label}</span>}
             </Link>
           ))}
+
+          {/* Admin Section */}
+          {user.role === "admin" && (
+            <>
+              <div
+                className={`mt-6 mb-2 px-6 text-[10px] font-bold text-zinc-600 uppercase tracking-widest ${isCollapsed ? "hidden" : ""}`}
+              >
+                Admin
+              </div>
+              <Link
+                to="/users"
+                className={`flex items-center gap-3 px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-900/50 transition-colors border-l-2 border-transparent group ${
+                  isCollapsed ? "justify-center px-0 py-3 mx-2" : "mx-0"
+                }`}
+                activeProps={{
+                  className: `!text-emerald-500 !bg-emerald-500/5 ${
+                    isCollapsed ? "!border-l-0" : "!border-l-emerald-500"
+                  }`,
+                }}
+                title={isCollapsed ? "Users" : undefined}
+              >
+                <Users className="w-4 h-4 group-hover:text-white transition-colors" />
+                {!isCollapsed && <span>Users</span>}
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* Footer Navigation */}
         <div className="p-2 border-t border-[#1f1f1f]">
+          <a
+            href="https://github.com/naufalw/better-media"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex items-center gap-3 px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-900/50 transition-colors mb-2 ${
+              isCollapsed ? "justify-center px-0" : ""
+            }`}
+            title="Star on Github"
+          >
+            <Github className="w-4 h-4" />
+            {!isCollapsed && <span>Star on Github</span>}
+          </a>
           <Link
             to="/settings"
             className={`flex items-center gap-3 px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-900/50 transition-colors ${
@@ -91,8 +180,26 @@ function RootComponent() {
             title="Settings"
           >
             <Settings className="w-4 h-4" />
-            {!isCollapsed && <span>Settings</span>}
+            {!isCollapsed && (
+              <div className="flex flex-col items-start overflow-hidden">
+                <span className="truncate w-full">{user.name}</span>
+                <span className="text-xs text-zinc-500">Settings</span>
+              </div>
+            )}
           </Link>
+          <button
+            onClick={() => {
+              logout();
+              navigate({ to: "/login" });
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-900/10 transition-colors mt-1 ${
+              isCollapsed ? "justify-center px-0" : ""
+            }`}
+            title="Log Out"
+          >
+            <LogOut className="w-4 h-4" />
+            {!isCollapsed && <span>Log Out</span>}
+          </button>
         </div>
       </aside>
 
@@ -106,8 +213,6 @@ function RootComponent() {
           <Outlet />
         </div>
       </main>
-
-      <TanStackRouterDevtools position="bottom-right" />
     </div>
   );
 }

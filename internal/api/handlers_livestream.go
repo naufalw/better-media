@@ -77,24 +77,25 @@ func (s *Server) handleLivePlayback(c *gin.Context) {
 // Create a new stream key
 func (s *Server) handleCreateStreamKey(c *gin.Context) {
 	var req struct {
-		Name string `json:"name" binding:"required"`
+		Name          string  `json:"name" binding:"required"`
+		LibraryID     *string `json:"library_id"`
+		SaveRecording bool    `json:"save_recording"`
 	}
-
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	key, err := s.DB.CreateStreamKey(req.Name)
+	key, err := s.DB.CreateStreamKey(req.Name, req.LibraryID, req.SaveRecording)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create stream key"})
 		return
 	}
-
 	c.JSON(http.StatusCreated, gin.H{
-		"id":   key.ID,
-		"name": key.Name,
-		"key":  key.Key,
+		"id":             key.ID,
+		"name":           key.Name,
+		"key":            key.Key,
+		"library_id":     key.LibraryID,
+		"save_recording": key.SaveRecording,
 	})
 }
 

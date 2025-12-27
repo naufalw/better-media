@@ -10,26 +10,52 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VideoRouteImport } from './routes/video'
+import { Route as SetupRouteImport } from './routes/setup'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as PaddedRouteImport } from './routes/_padded'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as PaddedStreamsRouteImport } from './routes/_padded/streams'
-import { Route as PaddedSettingsRouteImport } from './routes/_padded/settings'
-import { Route as PaddedLiveRouteImport } from './routes/_padded/live'
-import { Route as PaddedVideoVideoIdRouteImport } from './routes/_padded/video.$videoId'
+import { Route as PaddedIndexRouteImport } from './routes/_padded.index'
+import { Route as VideoVideoIdRouteImport } from './routes/video.$videoId'
+import { Route as PaddedUsersRouteImport } from './routes/_padded.users'
+import { Route as PaddedStreamsRouteImport } from './routes/_padded.streams'
+import { Route as PaddedSettingsRouteImport } from './routes/_padded.settings'
+import { Route as PaddedLiveRouteImport } from './routes/_padded.live'
+import { Route as PaddedLibrariesRouteImport } from './routes/_padded.libraries'
+import { Route as LibrariesLibraryIdIndexRouteImport } from './routes/libraries.$libraryId.index'
+import { Route as LibrariesLibraryIdVideoVideoIdRouteImport } from './routes/libraries.$libraryId.video.$videoId'
 
 const VideoRoute = VideoRouteImport.update({
   id: '/video',
   path: '/video',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PaddedRoute = PaddedRouteImport.update({
   id: '/_padded',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const PaddedIndexRoute = PaddedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => PaddedRoute,
+} as any)
+const VideoVideoIdRoute = VideoVideoIdRouteImport.update({
+  id: '/$videoId',
+  path: '/$videoId',
+  getParentRoute: () => VideoRoute,
+} as any)
+const PaddedUsersRoute = PaddedUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => PaddedRoute,
 } as any)
 const PaddedStreamsRoute = PaddedStreamsRouteImport.update({
   id: '/streams',
@@ -46,64 +72,120 @@ const PaddedLiveRoute = PaddedLiveRouteImport.update({
   path: '/live',
   getParentRoute: () => PaddedRoute,
 } as any)
-const PaddedVideoVideoIdRoute = PaddedVideoVideoIdRouteImport.update({
-  id: '/video/$videoId',
-  path: '/video/$videoId',
+const PaddedLibrariesRoute = PaddedLibrariesRouteImport.update({
+  id: '/libraries',
+  path: '/libraries',
   getParentRoute: () => PaddedRoute,
 } as any)
+const LibrariesLibraryIdIndexRoute = LibrariesLibraryIdIndexRouteImport.update({
+  id: '/libraries/$libraryId/',
+  path: '/libraries/$libraryId/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibrariesLibraryIdVideoVideoIdRoute =
+  LibrariesLibraryIdVideoVideoIdRouteImport.update({
+    id: '/libraries/$libraryId/video/$videoId',
+    path: '/libraries/$libraryId/video/$videoId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/video': typeof VideoRoute
+  '/login': typeof LoginRoute
+  '/setup': typeof SetupRoute
+  '/video': typeof VideoRouteWithChildren
+  '/libraries': typeof PaddedLibrariesRoute
   '/live': typeof PaddedLiveRoute
   '/settings': typeof PaddedSettingsRoute
   '/streams': typeof PaddedStreamsRoute
-  '/video/$videoId': typeof PaddedVideoVideoIdRoute
+  '/users': typeof PaddedUsersRoute
+  '/video/$videoId': typeof VideoVideoIdRoute
+  '/': typeof PaddedIndexRoute
+  '/libraries/$libraryId': typeof LibrariesLibraryIdIndexRoute
+  '/libraries/$libraryId/video/$videoId': typeof LibrariesLibraryIdVideoVideoIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/video': typeof VideoRoute
+  '/login': typeof LoginRoute
+  '/setup': typeof SetupRoute
+  '/video': typeof VideoRouteWithChildren
+  '/libraries': typeof PaddedLibrariesRoute
   '/live': typeof PaddedLiveRoute
   '/settings': typeof PaddedSettingsRoute
   '/streams': typeof PaddedStreamsRoute
-  '/video/$videoId': typeof PaddedVideoVideoIdRoute
+  '/users': typeof PaddedUsersRoute
+  '/video/$videoId': typeof VideoVideoIdRoute
+  '/': typeof PaddedIndexRoute
+  '/libraries/$libraryId': typeof LibrariesLibraryIdIndexRoute
+  '/libraries/$libraryId/video/$videoId': typeof LibrariesLibraryIdVideoVideoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
   '/_padded': typeof PaddedRouteWithChildren
-  '/video': typeof VideoRoute
+  '/login': typeof LoginRoute
+  '/setup': typeof SetupRoute
+  '/video': typeof VideoRouteWithChildren
+  '/_padded/libraries': typeof PaddedLibrariesRoute
   '/_padded/live': typeof PaddedLiveRoute
   '/_padded/settings': typeof PaddedSettingsRoute
   '/_padded/streams': typeof PaddedStreamsRoute
-  '/_padded/video/$videoId': typeof PaddedVideoVideoIdRoute
+  '/_padded/users': typeof PaddedUsersRoute
+  '/video/$videoId': typeof VideoVideoIdRoute
+  '/_padded/': typeof PaddedIndexRoute
+  '/libraries/$libraryId/': typeof LibrariesLibraryIdIndexRoute
+  '/libraries/$libraryId/video/$videoId': typeof LibrariesLibraryIdVideoVideoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
+    | '/login'
+    | '/setup'
     | '/video'
+    | '/libraries'
     | '/live'
     | '/settings'
     | '/streams'
+    | '/users'
     | '/video/$videoId'
+    | '/'
+    | '/libraries/$libraryId'
+    | '/libraries/$libraryId/video/$videoId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/video' | '/live' | '/settings' | '/streams' | '/video/$videoId'
+  to:
+    | '/login'
+    | '/setup'
+    | '/video'
+    | '/libraries'
+    | '/live'
+    | '/settings'
+    | '/streams'
+    | '/users'
+    | '/video/$videoId'
+    | '/'
+    | '/libraries/$libraryId'
+    | '/libraries/$libraryId/video/$videoId'
   id:
     | '__root__'
-    | '/'
     | '/_padded'
+    | '/login'
+    | '/setup'
     | '/video'
+    | '/_padded/libraries'
     | '/_padded/live'
     | '/_padded/settings'
     | '/_padded/streams'
-    | '/_padded/video/$videoId'
+    | '/_padded/users'
+    | '/video/$videoId'
+    | '/_padded/'
+    | '/libraries/$libraryId/'
+    | '/libraries/$libraryId/video/$videoId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   PaddedRoute: typeof PaddedRouteWithChildren
-  VideoRoute: typeof VideoRoute
+  LoginRoute: typeof LoginRoute
+  SetupRoute: typeof SetupRoute
+  VideoRoute: typeof VideoRouteWithChildren
+  LibrariesLibraryIdIndexRoute: typeof LibrariesLibraryIdIndexRoute
+  LibrariesLibraryIdVideoVideoIdRoute: typeof LibrariesLibraryIdVideoVideoIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -115,6 +197,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VideoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_padded': {
       id: '/_padded'
       path: ''
@@ -122,12 +218,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PaddedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
+    '/_padded/': {
+      id: '/_padded/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof PaddedIndexRouteImport
+      parentRoute: typeof PaddedRoute
+    }
+    '/video/$videoId': {
+      id: '/video/$videoId'
+      path: '/$videoId'
+      fullPath: '/video/$videoId'
+      preLoaderRoute: typeof VideoVideoIdRouteImport
+      parentRoute: typeof VideoRoute
+    }
+    '/_padded/users': {
+      id: '/_padded/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof PaddedUsersRouteImport
+      parentRoute: typeof PaddedRoute
     }
     '/_padded/streams': {
       id: '/_padded/streams'
@@ -150,37 +260,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PaddedLiveRouteImport
       parentRoute: typeof PaddedRoute
     }
-    '/_padded/video/$videoId': {
-      id: '/_padded/video/$videoId'
-      path: '/video/$videoId'
-      fullPath: '/video/$videoId'
-      preLoaderRoute: typeof PaddedVideoVideoIdRouteImport
+    '/_padded/libraries': {
+      id: '/_padded/libraries'
+      path: '/libraries'
+      fullPath: '/libraries'
+      preLoaderRoute: typeof PaddedLibrariesRouteImport
       parentRoute: typeof PaddedRoute
+    }
+    '/libraries/$libraryId/': {
+      id: '/libraries/$libraryId/'
+      path: '/libraries/$libraryId'
+      fullPath: '/libraries/$libraryId'
+      preLoaderRoute: typeof LibrariesLibraryIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/libraries/$libraryId/video/$videoId': {
+      id: '/libraries/$libraryId/video/$videoId'
+      path: '/libraries/$libraryId/video/$videoId'
+      fullPath: '/libraries/$libraryId/video/$videoId'
+      preLoaderRoute: typeof LibrariesLibraryIdVideoVideoIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
 interface PaddedRouteChildren {
+  PaddedLibrariesRoute: typeof PaddedLibrariesRoute
   PaddedLiveRoute: typeof PaddedLiveRoute
   PaddedSettingsRoute: typeof PaddedSettingsRoute
   PaddedStreamsRoute: typeof PaddedStreamsRoute
-  PaddedVideoVideoIdRoute: typeof PaddedVideoVideoIdRoute
+  PaddedUsersRoute: typeof PaddedUsersRoute
+  PaddedIndexRoute: typeof PaddedIndexRoute
 }
 
 const PaddedRouteChildren: PaddedRouteChildren = {
+  PaddedLibrariesRoute: PaddedLibrariesRoute,
   PaddedLiveRoute: PaddedLiveRoute,
   PaddedSettingsRoute: PaddedSettingsRoute,
   PaddedStreamsRoute: PaddedStreamsRoute,
-  PaddedVideoVideoIdRoute: PaddedVideoVideoIdRoute,
+  PaddedUsersRoute: PaddedUsersRoute,
+  PaddedIndexRoute: PaddedIndexRoute,
 }
 
 const PaddedRouteWithChildren =
   PaddedRoute._addFileChildren(PaddedRouteChildren)
 
+interface VideoRouteChildren {
+  VideoVideoIdRoute: typeof VideoVideoIdRoute
+}
+
+const VideoRouteChildren: VideoRouteChildren = {
+  VideoVideoIdRoute: VideoVideoIdRoute,
+}
+
+const VideoRouteWithChildren = VideoRoute._addFileChildren(VideoRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   PaddedRoute: PaddedRouteWithChildren,
-  VideoRoute: VideoRoute,
+  LoginRoute: LoginRoute,
+  SetupRoute: SetupRoute,
+  VideoRoute: VideoRouteWithChildren,
+  LibrariesLibraryIdIndexRoute: LibrariesLibraryIdIndexRoute,
+  LibrariesLibraryIdVideoVideoIdRoute: LibrariesLibraryIdVideoVideoIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

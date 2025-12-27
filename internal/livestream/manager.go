@@ -47,7 +47,8 @@ func (m *Manager) onStreamEnd(streamKey string) {
 	log.Printf("[LivestreamManager] Stream ended: %s", streamKey)
 }
 func (m *Manager) validateKey(key string) bool {
-	return m.DB.ValidateStreamKey(key)
+	streamKey, err := m.DB.ValidateStreamKey(key)
+	return err == nil && streamKey != nil
 }
 func (m *Manager) onRecordReady(streamKey, outputDir string) {
 	go m.uploadRecording(streamKey, outputDir)
@@ -71,7 +72,8 @@ func (m *Manager) uploadRecording(streamKey, outputDir string) {
 	log.Printf("[LivestreamManager] Recording uploaded: %s", objectKey)
 	log.Printf("[LivestreamManager] Video ID: %s", videoID)
 
-	m.DB.CreateVideo(videoID, "Livestream Recording", "livestream")
+	// TODO: LIBRARY ID
+	m.DB.CreateVideo(videoID, "Livestream Recording", "livestream", nil)
 
 	// transcode
 	if m.Dispatcher != nil {

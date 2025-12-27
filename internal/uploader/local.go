@@ -43,3 +43,8 @@ func (u *LocalUploader) NotifyFailed(errMsg string) error {
 func (u *LocalUploader) UpdateProgress(percent int) error {
 	return u.db.UpdateJobProgress(u.jobID, percent)
 }
+
+func (u *LocalUploader) UpdateMetadata(videoID string, durationMs int64, fileSizeBytes int64, width, height int) error {
+	log.Printf("[%s] Updating metadata for video %s: %dms, %dx%d, %d bytes", u.jobID, videoID, durationMs, width, height, fileSizeBytes)
+	return u.db.UpdateVideoMetadata(videoID, durationMs, fileSizeBytes, width, height)
+}
