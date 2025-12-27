@@ -63,3 +63,29 @@ func (db *DB) UpdateJobProgress(id string, progress int) error {
 	_, err := db.Exec(query, progress, id)
 	return err
 }
+
+// fetch the latest job by video ID
+func (db *DB) GetLatestJobByVideoID(videoID string) (*Job, error) {
+	query := `SELECT id, video_id, status, progress, error, created_at, updated_at 
+              FROM jobs WHERE video_id = ? ORDER BY created_at DESC LIMIT 1`
+
+	row := db.QueryRow(query, videoID)
+
+	var job Job
+
+	err := row.Scan(
+		&job.ID,
+		&job.VideoID,
+		&job.Status,
+		&job.Progress,
+		&job.Error,
+		&job.CreatedAt,
+		&job.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &job, nil
+}

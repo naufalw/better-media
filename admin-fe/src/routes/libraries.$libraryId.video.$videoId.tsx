@@ -15,12 +15,14 @@ function VideoDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: library, isLoading } = useQuery({
-    queryKey: ["library", libraryId],
-    queryFn: () => api.getLibrary(libraryId),
+  const { data: video, isLoading } = useQuery({
+    queryKey: ["video", videoId],
+    queryFn: () => api.getVideo(videoId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "processing" || status === "pending" ? 500 : false;
+    },
   });
-
-  const video = library?.videos?.find((v: any) => v.id === videoId);
 
   const deleteMutation = useMutation({
     mutationFn: api.deleteVideo,
@@ -41,7 +43,7 @@ function VideoDetailPage() {
   if (!video) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <p className="text-zinc-500">Video not found in this library.</p>
+        <p className="text-zinc-500">Video not found.</p>
         <Link
           to="/libraries/$libraryId"
           params={{ libraryId }}
@@ -97,14 +99,35 @@ function VideoDetailPage() {
                   className="w-full h-full"
                   src={`${API_BASE}${video.playback_url}`}
                   poster={`${API_BASE}${video.thumbnail_url}`}
-                />
+                >
+                  {video.subtitle_url && (
+                    <track
+                      kind="subtitles"
+                      src={`${API_BASE}${video.subtitle_url}`}
+                      label="English"
+                    />
+                  )}
+                </video>
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
-                  <div className="text-center">
+                  <div className="text-center w-full max-w-md px-6">
                     <div className="inline-block p-3 bg-zinc-800 rounded-full mb-3">
                       <FileVideo className="w-6 h-6 text-zinc-500" />
                     </div>
-                    <p className="text-zinc-400 font-medium">Video is processing...</p>
+                    <p className="text-zinc-400 font-medium mb-2">
+                      {video.status === "processing" ? "Processing..." : `Status: ${video.status}`}
+                    </p>
+                    {video.status === "processing" && (
+                      <div className="w-full bg-zinc-800 rounded-full h-1.5 mt-4 overflow-hidden">
+                        <div
+                          className="bg-emerald-500 h-full transition-all duration-500 ease-out"
+                          style={{ width: `${video.progress || 0}%` }}
+                        />
+                      </div>
+                    )}
+                    {video.status === "processing" && (
+                      <p className="text-xs text-zinc-500 mt-2">{video.progress || 0}% completed</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -155,7 +178,7 @@ function VideoDetailPage() {
                     <div className="text-sm">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${
-                          video.status === "ready"
+                          ["ready", "completed", "playable"].includes(video.status)
                             ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
                             : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
                         }`}
