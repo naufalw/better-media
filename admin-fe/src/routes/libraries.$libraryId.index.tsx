@@ -247,7 +247,7 @@ function LibraryVideosPage() {
                       <th className="px-2 py-3 border-b border-zinc-900 w-[100px] bg-[#09090b]">
                         Duration
                       </th>
-                      <th className="px-2 py-3 border-b border-l border-zinc-900 bg-[#09090b] text-left sticky right-0 z-20">
+                      <th className="px-4 py-3 border-b border-l border-zinc-900 bg-[#09090b] text-left sticky right-0 z-20">
                         Action
                       </th>
                     </tr>
@@ -306,8 +306,8 @@ function LibraryVideosPage() {
                         <td className="px-2 py-4 text-zinc-400 tabular-nums">
                           {formatDuration(video.duration_ms || 0)}
                         </td>
-                        <td className="px-2 py-4 text-right sticky right-0 z-10 bg-[#09090b] border-l border-zinc-900 group-hover:bg-zinc-900">
-                          <div className="flex items-center justify-end gap-3">
+                        <td className="pl-4 pr-2 py-4 text-left sticky right-0 z-10 bg-[#09090b] border-l border-zinc-900 group-hover:bg-zinc-900">
+                          <div className="flex items-center justify-left gap-3">
                             <Link
                               to="/libraries/$libraryId/video/$videoId"
                               params={{ libraryId, videoId: video.id }}
