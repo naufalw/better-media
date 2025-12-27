@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { api } from "../../lib/api";
+import { api } from "@/lib/api";
 import { Loader2, KeyRound } from "lucide-react";
 
 export const Route = createFileRoute("/_padded/settings")({

@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "../../lib/api";
+import { api } from "@/lib/api";
 import { Loader2, Trash2, UserPlus, Shield, User } from "lucide-react";
 import { useState } from "react";
-import { useAuth } from "../../lib/auth";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_padded/users")({
   component: UsersPage,

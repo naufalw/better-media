@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Trash2, Calendar, HardDrive, FileVideo, CheckCircle2 } from "lucide-react";
 import { Loader2 } from "lucide-react";
 
-export const Route = createFileRoute("/_padded/video/$videoId")({
+export const Route = createFileRoute("/video/$videoId")({
   validateSearch: (search: Record<string, unknown>) => ({
     view: (search.view as "list" | "grid") || "list",
   }),

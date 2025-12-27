@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, API_BASE } from "../lib/api";
+import { api, API_BASE } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Trash2, Play, Loader2, RefreshCw, List, Grid, Upload, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { UploadDialog } from "@/components/upload-dialog";
 
-export const Route = createFileRoute("/libraries/$libraryId")({
+export const Route = createFileRoute("/libraries/$libraryId/")({
   validateSearch: (search: Record<string, unknown>) => {
     return {
       view: (search.view as "list" | "grid") || "list",
@@ -219,7 +219,7 @@ function LibraryVideosPage() {
           <div className="flex-1 overflow-hidden flex flex-col bg-[#09090b]">
             {viewMode === "list" ? (
               /* List View */
-              <div className="flex-1 overflow-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-800 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-zinc-700">
+              (<div className="flex-1 overflow-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-800 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-zinc-700">
                 <table className="w-full text-sm text-left border-collapse border-b border-zinc-900 ">
                   <thead className="text-zinc-400 font-medium bg-[#09090b] sticky top-0 z-30 shadow-sm">
                     <tr>
@@ -260,7 +260,7 @@ function LibraryVideosPage() {
                             <Link
                               to="/libraries/$libraryId/video/$videoId"
                               params={{ libraryId, videoId: video.id }}
-                              search={{ view: viewMode }}
+                              search={{ view: "list" }}
                               className="block  w-20 aspect-video rounded-sm bg-zinc-900 overflow-hidden relative shrink-0 border border-zinc-800"
                             >
                               <img
@@ -333,10 +333,10 @@ function LibraryVideosPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </div>)
             ) : (
               /* Grid View */
-              <div className="p-6 overflow-auto bg-[#09090b]">
+              (<div className="p-6 overflow-auto bg-[#09090b]">
                 <div className="grid grid-cols-2  md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-6">
                   {videos.map((video) => (
                     <div
@@ -406,13 +406,13 @@ function LibraryVideosPage() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </div>)
             )}
           </div>
         )}
       </div>
     </div>
-  );
+  )
 }
 
 function StatusBadge({ status }: { status: string }) {

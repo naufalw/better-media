@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "../../lib/api";
+import { api } from "@/lib/api";
 import { Loader2, Plus, Library, Trash2, Folder } from "lucide-react";
 import { useState } from "react";
 

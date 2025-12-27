@@ -5,22 +5,15 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Trash2, Calendar, HardDrive, FileVideo, CheckCircle2 } from "lucide-react";
 import { Loader2 } from "lucide-react";
 
-export const Route = createFileRoute("/_padded/libraries/$libraryId/video/$videoId")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    view: (search.view as "list" | "grid") || "list",
-  }),
+export const Route = createFileRoute("/libraries/$libraryId/video/$videoId")({
   component: VideoDetailPage,
 });
 
 function VideoDetailPage() {
   const { libraryId, videoId } = Route.useParams();
-  const { view } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // We fetch library details to get the list of videos, then find the one we need.
-  // Ideally, backend should support getting single video directly (api.getVideo(id)), which would be more efficient.
-  // But conforming to current pattern request.
   const { data: library, isLoading } = useQuery({
     queryKey: ["library", libraryId],
     queryFn: () => api.getLibrary(libraryId),
@@ -32,7 +25,7 @@ function VideoDetailPage() {
     mutationFn: api.deleteVideo,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["library", libraryId] });
-      navigate({ to: "/libraries/$libraryId", params: { libraryId }, search: { view } });
+      navigate({ to: "/libraries/$libraryId", params: { libraryId }, search: { view: "list" } });
     },
   });
 
@@ -51,7 +44,7 @@ function VideoDetailPage() {
         <Link
           to="/libraries/$libraryId"
           params={{ libraryId }}
-          search={{ view }}
+          search={{ view: "list" }}
           className="text-emerald-500 hover:underline"
         >
           Back to Library
@@ -67,7 +60,7 @@ function VideoDetailPage() {
         <Link
           to="/libraries/$libraryId"
           params={{ libraryId }}
-          search={{ view }}
+          search={{ view: "list" }}
           className="p-2 -ml-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
