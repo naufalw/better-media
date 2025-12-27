@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Loader2, Trash2, UserPlus, Shield, User } from "lucide-react";
 import { useState } from "react";
-import { useAuth } from "@/lib/auth";
+import { useAuth, User as UserType } from "@/lib/auth";
 
 export const Route = createFileRoute("/_padded/users")({
   component: UsersPage,
@@ -141,7 +141,7 @@ function UsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
-              {data?.users?.map((u: any) => (
+              {data?.users?.map((u: UserType) => (
                 <tr key={u.id} className="hover:bg-zinc-900/50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex flex-col">

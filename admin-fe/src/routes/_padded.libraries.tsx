@@ -8,6 +8,13 @@ export const Route = createFileRoute("/_padded/libraries")({
   component: LibrariesPage,
 });
 
+interface Library {
+  id: string;
+  name: string;
+  description: string;
+  created_at: string;
+}
+
 function LibrariesPage() {
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -126,7 +133,7 @@ function LibrariesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {libraries.map((lib: any) => (
+            {libraries.map((lib: Library) => (
               <div
                 key={lib.id}
                 className="group relative bg-[#09090b] border border-zinc-800 hover:border-zinc-700 transition-all rounded-sm p-4 flex flex-col gap-4"

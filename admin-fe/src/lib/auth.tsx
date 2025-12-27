@@ -2,11 +2,12 @@ import { createContext, useContext } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 
-interface User {
+export interface User {
   id: string;
   email: string;
   name: string;
   role: string;
+  created_at: string;
 }
 
 interface AuthContextType {
