@@ -1,5 +1,24 @@
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
+
+interface SetupAdminData {
+  name: string;
+  email: string;
+  password: string;
+}
+
+interface ChangePasswordData {
+  current_password: string;
+  new_password: string;
+}
+
+interface CreateUserData {
+  name: string;
+  email: string;
+  password: string;
+}
+
+
 export const api = {
   // Videos
   async getVideos() {
@@ -101,7 +120,9 @@ export const api = {
     return res.json();
   },
 
-  async setupAdmin(data: any) {
+
+
+  async setupAdmin(data: SetupAdminData) {
     const res = await fetch(`${API_BASE}/v1/setup/admin`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -111,7 +132,7 @@ export const api = {
     return res.json();
   },
 
-  async changePassword(data: any) {
+  async changePassword(data: ChangePasswordData) {
       const res = await fetchWithAuth(`${API_BASE}/v1/auth/change-password`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -131,11 +152,8 @@ export const api = {
       return res.json();
   },
 
-  async createUser(data: any) {
-      // Re-using register endpoint or we might need a specific admin create user endpoint?
-      // The backend has /v1/auth/register which is public.
-      // For now we can use that, but usually admin creating user might skip email verification etc.
-      // But let's use register for now as there is no specific admin create user.
+  async createUser(data: CreateUserData) {
+
       const res = await fetch(`${API_BASE}/v1/auth/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
