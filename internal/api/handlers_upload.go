@@ -64,6 +64,7 @@ func (s *Server) handleCreateTranscodingJob(c *gin.Context) {
 		Title       string  `json:"title"`
 		LibraryID   *string `json:"library_id"`
 		Resolutions []int   `json:"resolutions"`
+		Transcribe  bool    `json:"transcribe"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
@@ -79,6 +80,7 @@ func (s *Server) handleCreateTranscodingJob(c *gin.Context) {
 		VideoID:     req.VideoID,
 		InputFile:   req.InputFile,
 		Resolutions: req.Resolutions,
+		Transcribe:  req.Transcribe,
 	}
 
 	jobID, err := s.Dispatcher.Dispatch(c, payload)

@@ -136,8 +136,8 @@ func (u *RemoteUploader) NotifyPlayable() error {
 	return u.updateStatus("playable", nil)
 }
 func (u *RemoteUploader) NotifyComplete() error {
-	log.Printf("[%s] Notifying API: completed", u.jobID)
-	return u.updateStatus("completed", nil)
+	log.Printf("[%s] Notifying API: ready", u.jobID)
+	return u.updateStatus("ready", nil)
 }
 func (u *RemoteUploader) NotifyFailed(errMsg string) error {
 	log.Printf("[%s] Notifying API: failed - %s", u.jobID, errMsg)

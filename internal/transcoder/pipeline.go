@@ -104,19 +104,23 @@ func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error
 	if err := p.GenerateThumbnails(ctx); err != nil {
 		log.Printf("[%s] Warning: Thumbnail generation failed: %v", p.Payload.VideoID, err)
 		// if thumbnail fail, just ignore
+	} else if p.Uploader != nil {
+		if err := p.uploadThumbnails(ctx); err != nil {
+			log.Printf("[%s] Warning: Thumbnail upload failed: %v", p.Payload.VideoID, err)
+		}
 	}
 
 	if err := p.GenerateSubtitles(ctx); err != nil {
 		log.Printf("[%s] Warning: Subtitle generation failed: %v", p.Payload.VideoID, err)
 		// if subtitle fail, just ignore
+	} else if p.Uploader != nil {
+		if err := p.uploadSubtitles(ctx); err != nil {
+			log.Printf("[%s] Warning: Subtitle upload failed: %v", p.Payload.VideoID, err)
+		}
 	}
 
 	if err := p.Encode(ctx, s3c); err != nil {
 		return fmt.Errorf("failed to encode file: %w", err)
-	}
-
-	if err := p.Upload(ctx); err != nil {
-		return fmt.Errorf("failed to upload encoded files: %w", err)
 	}
 
 	log.Printf("[%s] Encoding pipeline completed successfully.\n", p.Payload.VideoID)
@@ -497,10 +501,8 @@ func (p *EncodingPipeline) uploadRendition(ctx context.Context, renditionDir str
 	})
 }
 
-func (p *EncodingPipeline) Upload(ctx context.Context) error {
-	log.Printf("[%s] Stage [4/5]: Uploading to S3...\n", p.Payload.VideoID)
-
-	// thumbnail
+// upload thumbnails
+func (p *EncodingPipeline) uploadThumbnails(ctx context.Context) error {
 	thumbDir := filepath.Join(p.EncodedOutputPath, "thumbnails")
 	if _, err := os.Stat(thumbDir); err == nil {
 		if err := filepath.Walk(thumbDir, func(path string, info os.FileInfo, err error) error {
@@ -511,15 +513,18 @@ func (p *EncodingPipeline) Upload(ctx context.Context) error {
 			log.Printf("Uploading thumbnail %s", objectKey)
 			if err := p.Uploader.Upload(ctx, path, objectKey); err != nil {
 				log.Printf("Failed to upload thumbnail %s: %v", objectKey, err)
-				// Continue with other thumbnails
 			}
 			return nil
 		}); err != nil {
 			log.Printf("Error walking thumbnail directory: %v", err)
+			return err
 		}
 	}
+	return nil
+}
 
-	//subtitle
+// upload subtitles
+func (p *EncodingPipeline) uploadSubtitles(ctx context.Context) error {
 	subtitlesDir := filepath.Join(p.EncodedOutputPath, "subtitles")
 	if _, err := os.Stat(subtitlesDir); err == nil {
 		if err := filepath.Walk(subtitlesDir, func(path string, info os.FileInfo, err error) error {
@@ -534,9 +539,9 @@ func (p *EncodingPipeline) Upload(ctx context.Context) error {
 			return nil
 		}); err != nil {
 			log.Printf("Error walking subtitles directory: %v", err)
+			return err
 		}
 	}
-
 	return nil
 }
 

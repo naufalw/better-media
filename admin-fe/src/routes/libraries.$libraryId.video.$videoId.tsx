@@ -20,7 +20,7 @@ function VideoDetailPage() {
     queryFn: () => api.getVideo(videoId),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status === "processing" || status === "pending" ? 500 : false;
+      return status !== "completed" && status !== "failed" ? 550 : false;
     },
   });
 
@@ -31,6 +31,14 @@ function VideoDetailPage() {
       navigate({ to: "/libraries/$libraryId", params: { libraryId }, search: { view: "list" } });
     },
   });
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
 
   if (isLoading) {
     return (
@@ -117,17 +125,6 @@ function VideoDetailPage() {
                     <p className="text-zinc-400 font-medium mb-2">
                       {video.status === "processing" ? "Processing..." : `Status: ${video.status}`}
                     </p>
-                    {video.status === "processing" && (
-                      <div className="w-full bg-zinc-800 rounded-full h-1.5 mt-4 overflow-hidden">
-                        <div
-                          className="bg-emerald-500 h-full transition-all duration-500 ease-out"
-                          style={{ width: `${video.progress || 0}%` }}
-                        />
-                      </div>
-                    )}
-                    {video.status === "processing" && (
-                      <p className="text-xs text-zinc-500 mt-2">{video.progress || 0}% completed</p>
-                    )}
                   </div>
                 </div>
               )}
@@ -149,6 +146,22 @@ function VideoDetailPage() {
                 <h3 className="text-sm font-medium text-white">Metadata</h3>
               </div>
               <div className="p-4 space-y-4">
+                {/* Progress Bar in Sidebar */}
+                {video.status !== "ready" && video.status !== "failed" && (
+                  <div className="space-y-2 pb-4 border-b border-zinc-800">
+                    <div className="flex justify-between text-xs text-zinc-400">
+                      <span>Processing</span>
+                      <span>{video.progress || 0}%</span>
+                    </div>
+                    <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-emerald-500 h-full transition-all duration-500 ease-out"
+                        style={{ width: `${video.progress || 0}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-start gap-3">
                   <Calendar className="w-4 h-4 text-zinc-500 mt-0.5" />
                   <div>
@@ -169,6 +182,32 @@ function VideoDetailPage() {
                     <div className="text-sm text-zinc-300 capitalize">{video.source}</div>
                   </div>
                 </div>
+                {video.file_size_bytes && (
+                  <div className="flex items-start gap-3">
+                    <HardDrive className="w-4 h-4 text-zinc-500 mt-0.5" />
+                    <div>
+                      <div className="text-xs text-zinc-500 uppercase tracking-wider font-medium">
+                        Size
+                      </div>
+                      <div className="text-sm text-zinc-300">
+                        {formatFileSize(video.file_size_bytes)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {video.resolution_width && video.resolution_height && (
+                  <div className="flex items-start gap-3">
+                    <FileVideo className="w-4 h-4 text-zinc-500 mt-0.5" />
+                    <div>
+                      <div className="text-xs text-zinc-500 uppercase tracking-wider font-medium">
+                        Resolution
+                      </div>
+                      <div className="text-sm text-zinc-300">
+                        {video.resolution_width}x{video.resolution_height}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-zinc-500 mt-0.5" />
                   <div>

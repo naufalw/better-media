@@ -5,7 +5,7 @@ import "time"
 type Job struct {
 	ID        string
 	VideoID   string
-	Status    string // pending, processing, playable, completed, failed
+	Status    string // pending, processing, playable, ready, failed
 	Progress  int
 	Error     *string
 	CreatedAt time.Time

@@ -33,7 +33,7 @@ func (u *LocalUploader) NotifyPlayable() error {
 
 func (u *LocalUploader) NotifyComplete() error {
 	log.Printf("[%s] Pipeline completed successfully", u.jobID)
-	return u.db.UpdateJobStatus(u.jobID, "completed", nil)
+	return u.db.UpdateJobStatus(u.jobID, "ready", nil)
 }
 func (u *LocalUploader) NotifyFailed(errMsg string) error {
 	log.Printf("[%s] Pipeline failed: %s", u.jobID, errMsg)
