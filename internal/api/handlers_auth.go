@@ -42,6 +42,7 @@ func (s *Server) handleRegister(c *gin.Context) {
 			"id":    user.ID,
 			"email": user.Email,
 			"name":  user.Name,
+			"role":  "member",
 		},
 		"token": token,
 	})
@@ -77,6 +78,7 @@ func (s *Server) handleLogin(c *gin.Context) {
 			"id":    user.ID,
 			"email": user.Email,
 			"name":  user.Name,
+			"role":  user.Role,
 		},
 		"token": token,
 	})
@@ -94,6 +96,7 @@ func (s *Server) handleGetCurrentUser(c *gin.Context) {
 		"id":    user.ID,
 		"email": user.Email,
 		"name":  user.Name,
+		"role":  user.Role,
 	})
 }
 

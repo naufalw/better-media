@@ -3,13 +3,13 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
 export const api = {
   // Videos
   async getVideos() {
-    const res = await fetch(`${API_BASE}/v1/videos`);
+    const res = await fetchWithAuth(`${API_BASE}/v1/videos`);
     if (!res.ok) throw new Error("Failed to fetch videos");
     return res.json();
   },
 
   async deleteVideo(id: string) {
-    const res = await fetch(`${API_BASE}/v1/videos/${id}`, { method: "DELETE" });
+    const res = await fetchWithAuth(`${API_BASE}/v1/videos/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Failed to delete video");
     return res.json();
   },
@@ -20,7 +20,7 @@ export const api = {
 
   // Upload
   async createUpload(fileName: string) {
-    const res = await fetch(`${API_BASE}/v1/uploads`, {
+    const res = await fetchWithAuth(`${API_BASE}/v1/uploads`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ file_name: fileName }),
@@ -30,7 +30,7 @@ export const api = {
   },
 
   async startTranscoding(videoId: string, inputFile: string, transcribe = false) {
-    const res = await fetch(`${API_BASE}/v1/jobs/transcoding`, {
+    const res = await fetchWithAuth(`${API_BASE}/v1/jobs/transcoding`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -45,20 +45,20 @@ export const api = {
   },
 
   async getJob(jobId: string) {
-    const res = await fetch(`${API_BASE}/v1/jobs/${jobId}`);
+    const res = await fetchWithAuth(`${API_BASE}/v1/jobs/${jobId}`);
     if (!res.ok) throw new Error("Failed to get job status");
     return res.json();
   },
 
   // Stream Keys
   async getStreamKeys() {
-    const res = await fetch(`${API_BASE}/v1/stream-keys`);
+    const res = await fetchWithAuth(`${API_BASE}/v1/stream-keys`);
     if (!res.ok) throw new Error("Failed to fetch stream keys");
     return res.json();
   },
 
   async createStreamKey(name: string) {
-    const res = await fetch(`${API_BASE}/v1/stream-keys`, {
+    const res = await fetchWithAuth(`${API_BASE}/v1/stream-keys`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
@@ -69,10 +69,101 @@ export const api = {
 
   // Live Streams
   async getLiveStreams() {
-    const res = await fetch(`${API_BASE}/v1/live`);
+    const res = await fetchWithAuth(`${API_BASE}/v1/live`);
     if (!res.ok) throw new Error("Failed to fetch live streams");
     return res.json();
   },
+
+  // Auth
+  async login(email: string, password: string) {
+    const res = await fetch(`${API_BASE}/v1/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) {
+       const err = await res.json();
+       throw new Error(err.error || "Login failed");
+    }
+    return res.json();
+  },
+
+  async getMe() {
+    const res = await fetchWithAuth(`${API_BASE}/v1/auth/me`);
+    if (!res.ok) throw new Error("Failed to get current user");
+    return res.json();
+  },
+
+  async setupStatus() {
+    const res = await fetch(`${API_BASE}/v1/setup/status`);
+    if (!res.ok) throw new Error("Failed to check setup status");
+    return res.json();
+  },
+
+  async setupAdmin(data: any) {
+    const res = await fetch(`${API_BASE}/v1/setup/admin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to setup admin");
+    return res.json();
+  },
+
+  async changePassword(data: any) {
+      const res = await fetchWithAuth(`${API_BASE}/v1/auth/change-password`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to change password");
+      }
+      return res.json();
+  },
+
+  // User Management
+  async listUsers() {
+      const res = await fetchWithAuth(`${API_BASE}/v1/users`);
+      if (!res.ok) throw new Error("Failed to list users");
+      return res.json();
+  },
+
+  async createUser(data: any) {
+      // Re-using register endpoint or we might need a specific admin create user endpoint?
+      // The backend has /v1/auth/register which is public.
+      // For now we can use that, but usually admin creating user might skip email verification etc.
+      // But let's use register for now as there is no specific admin create user.
+      const res = await fetch(`${API_BASE}/v1/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to create user");
+      }
+      return res.json();
+  },
+
+  async deleteUser(id: string) {
+      const res = await fetchWithAuth(`${API_BASE}/v1/users/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to delete user");
+      }
+      return res.json();
+  }
 };
+
+async function fetchWithAuth(url: string, options: RequestInit = {}) {
+  const token = localStorage.getItem("auth_token");
+  const headers = {
+    ...options.headers,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  return fetch(url, { ...options, headers });
+}
 
 export { API_BASE };

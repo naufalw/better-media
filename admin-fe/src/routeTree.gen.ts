@@ -10,8 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VideoRouteImport } from './routes/video'
+import { Route as SetupRouteImport } from './routes/setup'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as PaddedRouteImport } from './routes/_padded'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PaddedUsersRouteImport } from './routes/_padded/users'
 import { Route as PaddedStreamsRouteImport } from './routes/_padded/streams'
 import { Route as PaddedSettingsRouteImport } from './routes/_padded/settings'
 import { Route as PaddedLiveRouteImport } from './routes/_padded/live'
@@ -22,6 +25,16 @@ const VideoRoute = VideoRouteImport.update({
   path: '/video',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PaddedRoute = PaddedRouteImport.update({
   id: '/_padded',
   getParentRoute: () => rootRouteImport,
@@ -30,6 +43,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PaddedUsersRoute = PaddedUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => PaddedRoute,
 } as any)
 const PaddedStreamsRoute = PaddedStreamsRouteImport.update({
   id: '/streams',
@@ -54,55 +72,81 @@ const PaddedVideoVideoIdRoute = PaddedVideoVideoIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/setup': typeof SetupRoute
   '/video': typeof VideoRoute
   '/live': typeof PaddedLiveRoute
   '/settings': typeof PaddedSettingsRoute
   '/streams': typeof PaddedStreamsRoute
+  '/users': typeof PaddedUsersRoute
   '/video/$videoId': typeof PaddedVideoVideoIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/setup': typeof SetupRoute
   '/video': typeof VideoRoute
   '/live': typeof PaddedLiveRoute
   '/settings': typeof PaddedSettingsRoute
   '/streams': typeof PaddedStreamsRoute
+  '/users': typeof PaddedUsersRoute
   '/video/$videoId': typeof PaddedVideoVideoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_padded': typeof PaddedRouteWithChildren
+  '/login': typeof LoginRoute
+  '/setup': typeof SetupRoute
   '/video': typeof VideoRoute
   '/_padded/live': typeof PaddedLiveRoute
   '/_padded/settings': typeof PaddedSettingsRoute
   '/_padded/streams': typeof PaddedStreamsRoute
+  '/_padded/users': typeof PaddedUsersRoute
   '/_padded/video/$videoId': typeof PaddedVideoVideoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/login'
+    | '/setup'
     | '/video'
     | '/live'
     | '/settings'
     | '/streams'
+    | '/users'
     | '/video/$videoId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/video' | '/live' | '/settings' | '/streams' | '/video/$videoId'
+  to:
+    | '/'
+    | '/login'
+    | '/setup'
+    | '/video'
+    | '/live'
+    | '/settings'
+    | '/streams'
+    | '/users'
+    | '/video/$videoId'
   id:
     | '__root__'
     | '/'
     | '/_padded'
+    | '/login'
+    | '/setup'
     | '/video'
     | '/_padded/live'
     | '/_padded/settings'
     | '/_padded/streams'
+    | '/_padded/users'
     | '/_padded/video/$videoId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   PaddedRoute: typeof PaddedRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  SetupRoute: typeof SetupRoute
   VideoRoute: typeof VideoRoute
 }
 
@@ -113,6 +157,20 @@ declare module '@tanstack/react-router' {
       path: '/video'
       fullPath: '/video'
       preLoaderRoute: typeof VideoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_padded': {
@@ -128,6 +186,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_padded/users': {
+      id: '/_padded/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof PaddedUsersRouteImport
+      parentRoute: typeof PaddedRoute
     }
     '/_padded/streams': {
       id: '/_padded/streams'
@@ -164,6 +229,7 @@ interface PaddedRouteChildren {
   PaddedLiveRoute: typeof PaddedLiveRoute
   PaddedSettingsRoute: typeof PaddedSettingsRoute
   PaddedStreamsRoute: typeof PaddedStreamsRoute
+  PaddedUsersRoute: typeof PaddedUsersRoute
   PaddedVideoVideoIdRoute: typeof PaddedVideoVideoIdRoute
 }
 
@@ -171,6 +237,7 @@ const PaddedRouteChildren: PaddedRouteChildren = {
   PaddedLiveRoute: PaddedLiveRoute,
   PaddedSettingsRoute: PaddedSettingsRoute,
   PaddedStreamsRoute: PaddedStreamsRoute,
+  PaddedUsersRoute: PaddedUsersRoute,
   PaddedVideoVideoIdRoute: PaddedVideoVideoIdRoute,
 }
 
@@ -180,6 +247,8 @@ const PaddedRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PaddedRoute: PaddedRouteWithChildren,
+  LoginRoute: LoginRoute,
+  SetupRoute: SetupRoute,
   VideoRoute: VideoRoute,
 }
 export const routeTree = rootRouteImport

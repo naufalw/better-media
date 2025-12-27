@@ -1,8 +1,19 @@
 import * as React from "react";
-import { Link, Outlet, createRootRoute } from "@tanstack/react-router";
+import { Link, Outlet, createRootRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { Film, Radio, Tv, Settings, LayoutDashboard, ChevronLeft, Menu } from "lucide-react";
-import { useState } from "react";
+import {
+  Film,
+  Radio,
+  Tv,
+  Settings,
+  LayoutDashboard,
+  ChevronLeft,
+  Menu,
+  Loader2,
+  Users,
+} from "lucide-react";
+import { useState, useEffect } from "react";
+import { AuthProvider, useAuth } from "../lib/auth";
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -16,7 +27,45 @@ const navItems = [
 ];
 
 function RootComponent() {
+  return (
+    <AuthProvider>
+      <AppContent />
+      <TanStackRouterDevtools position="bottom-right" />
+    </AuthProvider>
+  );
+}
+
+function AppContent() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { user, isLoading } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const isPublicRoute = ["/login", "/setup"].includes(location.pathname);
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user && !isPublicRoute) {
+        navigate({ to: "/login" });
+      } else if (user && isPublicRoute) {
+        navigate({ to: "/" });
+      }
+    }
+  }, [user, isLoading, location.pathname, navigate, isPublicRoute]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#09090b] flex items-center justify-center text-zinc-200">
+        <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
+
+  if (isPublicRoute) {
+    return <Outlet />;
+  }
+
+  if (!user) return null; // Should redirect
 
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-200 flex font-sans antialiased selection:bg-emerald-500/30">
@@ -76,6 +125,32 @@ function RootComponent() {
               {!isCollapsed && <span>{item.label}</span>}
             </Link>
           ))}
+
+          {/* Admin Section */}
+          {user.role === "admin" && (
+            <>
+              <div
+                className={`mt-6 mb-2 px-6 text-[10px] font-bold text-zinc-600 uppercase tracking-widest ${isCollapsed ? "hidden" : ""}`}
+              >
+                Admin
+              </div>
+              <Link
+                to="/users"
+                className={`flex items-center gap-3 px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-900/50 transition-colors border-l-2 border-transparent group ${
+                  isCollapsed ? "justify-center px-0 py-3 mx-2" : "mx-0"
+                }`}
+                activeProps={{
+                  className: `!text-emerald-500 !bg-emerald-500/5 ${
+                    isCollapsed ? "!border-l-0" : "!border-l-emerald-500"
+                  }`,
+                }}
+                title={isCollapsed ? "Users" : undefined}
+              >
+                <Users className="w-4 h-4 group-hover:text-white transition-colors" />
+                {!isCollapsed && <span>Users</span>}
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* Footer Navigation */}
@@ -91,7 +166,12 @@ function RootComponent() {
             title="Settings"
           >
             <Settings className="w-4 h-4" />
-            {!isCollapsed && <span>Settings</span>}
+            {!isCollapsed && (
+              <div className="flex flex-col items-start overflow-hidden">
+                <span className="truncate w-full">{user.name}</span>
+                <span className="text-xs text-zinc-500">Settings</span>
+              </div>
+            )}
           </Link>
         </div>
       </aside>
@@ -106,8 +186,6 @@ function RootComponent() {
           <Outlet />
         </div>
       </main>
-
-      <TanStackRouterDevtools position="bottom-right" />
     </div>
   );
 }
