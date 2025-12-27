@@ -9,11 +9,11 @@ import (
 )
 
 type Library struct {
-	ID          string
-	Name        string
-	Description string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 func (db *DB) CreateLibrary(name, description string) (*Library, error) {

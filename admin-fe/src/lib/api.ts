@@ -19,23 +19,24 @@ export const api = {
   },
 
   // Upload
-  async createUpload(fileName: string) {
+  async createUpload(fileName: string, libraryId?: string) {
     const res = await fetchWithAuth(`${API_BASE}/v1/uploads`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ file_name: fileName }),
+      body: JSON.stringify({ file_name: fileName, library_id: libraryId }),
     });
     if (!res.ok) throw new Error("Failed to create upload");
     return res.json();
   },
 
-  async startTranscoding(videoId: string, inputFile: string, transcribe = false) {
+  async startTranscoding(videoId: string, inputFile: string, libraryId?: string, transcribe = false) {
     const res = await fetchWithAuth(`${API_BASE}/v1/jobs/transcoding`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         video_id: videoId,
         input_file: inputFile,
+        library_id: libraryId,
         resolutions: [360, 720, 1080],
         transcribe,
       }),
@@ -147,6 +148,7 @@ export const api = {
       return res.json();
   },
 
+
   async deleteUser(id: string) {
       const res = await fetchWithAuth(`${API_BASE}/v1/users/${id}`, { method: "DELETE" });
       if (!res.ok) {
@@ -154,6 +156,37 @@ export const api = {
         throw new Error(err.error || "Failed to delete user");
       }
       return res.json();
+  },
+
+  // Libraries
+  async listLibraries() {
+    const res = await fetchWithAuth(`${API_BASE}/v1/libraries`);
+    if (!res.ok) throw new Error("Failed to list libraries");
+    return res.json();
+  },
+
+  async createLibrary(name: string, description: string) {
+    const res = await fetchWithAuth(`${API_BASE}/v1/libraries`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, description }),
+    });
+    if (!res.ok) throw new Error("Failed to create library");
+    return res.json();
+  },
+
+  async getLibrary(id: string) {
+    const res = await fetchWithAuth(`${API_BASE}/v1/libraries/${id}`);
+    if (!res.ok) throw new Error("Failed to get library");
+    return res.json();
+  },
+
+  async deleteLibrary(id: string) {
+    const res = await fetchWithAuth(`${API_BASE}/v1/libraries/${id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to delete library");
+    return res.json();
   }
 };
 

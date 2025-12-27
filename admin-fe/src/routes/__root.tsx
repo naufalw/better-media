@@ -23,7 +23,7 @@ export const Route = createRootRoute({
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/video", icon: Film, label: "Videos" },
+  { to: "/libraries", icon: Film, label: "Libraries" },
   { to: "/streams", icon: Radio, label: "Stream Keys" },
   { to: "/live", icon: Tv, label: "Live Now" },
 ];

@@ -58,6 +58,7 @@ func (s *Server) handleGetLibrary(c *gin.Context) {
 		"name":        library.Name,
 		"description": library.Description,
 		"video_count": len(videos),
+		"videos":      videos,
 		"created_at":  library.CreatedAt,
 		"updated_at":  library.UpdatedAt,
 	})
