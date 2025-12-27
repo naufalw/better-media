@@ -2,7 +2,15 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, API_BASE } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Trash2, Calendar, HardDrive, FileVideo, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Trash2,
+  Calendar,
+  HardDrive,
+  FileVideo,
+  CheckCircle2,
+  Download,
+} from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { PaddedLayout } from "@/components/padded-layout";
 
@@ -146,7 +154,30 @@ function VideoDetailPage() {
             </div>
 
             <div className="bg-zinc-900/30 border border-zinc-800 rounded-lg p-6">
-              <h3 className="font-medium text-white mb-4">Transcription</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-medium text-white">Transcription</h3>
+                {transcription && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-zinc-400 hover:text-white"
+                    onClick={() => {
+                      const blob = new Blob([transcription], { type: "text/vtt" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `${video.title || "video"}_subtitles.vtt`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                )}
+              </div>
               <div className="text-zinc-400 text-sm leading-relaxed max-h-60 overflow-y-auto font-mono whitespace-pre-wrap">
                 {transcription ? (
                   <p>{transcription}</p>
