@@ -162,3 +162,27 @@ func (u *RemoteUploader) UpdateProgress(percent int) error {
 
 	return nil
 }
+
+func (u *RemoteUploader) UpdateMetadata(videoID string, durationMs int64, fileSizeBytes int64, width, height int) error {
+	url := fmt.Sprintf("%s/v1/callbacks/%s/metadata", u.callbackURL, u.jobID)
+
+	body := map[string]interface{}{
+		"video_id":          videoID,
+		"duration_ms":       durationMs,
+		"file_size_bytes":   fileSizeBytes,
+		"resolution_width":  width,
+		"resolution_height": height,
+	}
+
+	reqBody, _ := json.Marshal(body)
+	resp, err := u.httpClient.Post(url, "application/json", bytes.NewReader(reqBody))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("metadata update failed with status %d", resp.StatusCode)
+	}
+	return nil
+}

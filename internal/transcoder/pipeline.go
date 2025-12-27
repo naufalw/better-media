@@ -34,6 +34,7 @@ type EncodingPipeline struct {
 		Height   int
 		HasAudio bool
 		Duration float64
+		FileSize int64
 	}
 
 	TempDir            string
@@ -86,6 +87,20 @@ func (p *EncodingPipeline) Run(ctx context.Context, s3c *storage.S3Client) error
 		return fmt.Errorf("failed to probe file: %w", err)
 	}
 
+	// Update metadata
+	if p.Uploader != nil {
+		err := p.Uploader.UpdateMetadata(
+			p.Payload.VideoID,
+			int64(p.SourceInfo.Duration*1000), // ms
+			p.SourceInfo.FileSize,
+			p.SourceInfo.Width,
+			p.SourceInfo.Height,
+		)
+		if err != nil {
+			log.Printf("[%s] Warning: Failed to update metadata: %v", p.Payload.VideoID, err)
+		}
+	}
+
 	if err := p.GenerateThumbnails(ctx); err != nil {
 		log.Printf("[%s] Warning: Thumbnail generation failed: %v", p.Payload.VideoID, err)
 		// if thumbnail fail, just ignore
@@ -128,6 +143,11 @@ func (p *EncodingPipeline) Probe() error {
 		if durationStr, ok := formatMap["duration"].(string); ok {
 			if duration, err := strconv.ParseFloat(durationStr, 64); err == nil {
 				p.SourceInfo.Duration = duration
+			}
+		}
+		if sizeStr, ok := formatMap["size"].(string); ok {
+			if size, err := strconv.ParseInt(sizeStr, 10, 64); err == nil {
+				p.SourceInfo.FileSize = size
 			}
 		}
 	}

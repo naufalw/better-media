@@ -53,12 +53,32 @@ func (s *Server) handleGetLibrary(c *gin.Context) {
 
 	videos, _ := s.DB.ListVideosByLibrary(id)
 
+	videoResponses := make([]gin.H, 0, len(videos))
+	for _, v := range videos {
+		videoResponses = append(videoResponses, gin.H{
+			"id":                v.ID,
+			"library_id":        v.LibraryID,
+			"title":             v.Title,
+			"description":       v.Description,
+			"status":            v.Status,
+			"source":            v.Source,
+			"duration_ms":       v.DurationMs,
+			"file_size_bytes":   v.FileSizeBytes,
+			"resolution_width":  v.ResolutionWidth,
+			"resolution_height": v.ResolutionHeight,
+			"created_at":        v.CreatedAt,
+			"updated_at":        v.UpdatedAt,
+			"playback_url":      "/v1/videos/" + v.ID + "/playback/hls/master.m3u8",
+			"thumbnail_url":     "/v1/videos/" + v.ID + "/thumbnail/320",
+		})
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":          library.ID,
 		"name":        library.Name,
 		"description": library.Description,
 		"video_count": len(videos),
-		"videos":      videos,
+		"videos":      videoResponses,
 		"created_at":  library.CreatedAt,
 		"updated_at":  library.UpdatedAt,
 	})

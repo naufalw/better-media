@@ -35,6 +35,7 @@ func (s *Server) registerRoutes() {
 	v1.POST("/callbacks/:jobId/presign-upload", s.handlePresignUpload)
 	v1.POST("/callbacks/:jobId/status", s.handleWorkerStatusUpdate)
 	v1.POST("/callbacks/:jobId/progress", s.handleWorkerProgressUpdate)
+	v1.POST("/callbacks/:jobId/metadata", s.handleWorkerMetadataUpdate)
 
 	// PROTECTED
 	protected := v1.Group("/")

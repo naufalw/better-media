@@ -21,4 +21,7 @@ type Uploader interface {
 
 	// UpdateProgress changes the progress of the encoding job
 	UpdateProgress(percent int) error
+
+	// UpdateMetadata updates the video metadata (duration, size, resolution)
+	UpdateMetadata(videoID string, durationMs int64, fileSizeBytes int64, width, height int) error
 }

@@ -23,6 +23,36 @@ interface Video {
   created_at: string;
   playback_url: string;
   thumbnail_url: string;
+  duration_ms?: number;
+  file_size_bytes?: number;
+  resolution_width?: number;
+  resolution_height?: number;
+}
+
+function formatBytes(bytes: number) {
+  if (!bytes) return "--";
+  const units = ["B", "KB", "MB", "GB"];
+  let size = bytes;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+  return `${size.toFixed(1)} ${units[unitIndex]}`;
+}
+
+function formatDuration(ms: number) {
+  if (!ms) return "--";
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  const remainingSeconds = seconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${remainingMinutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
+  }
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
 function LibraryVideosPage() {
@@ -99,7 +129,7 @@ function LibraryVideosPage() {
   return (
     <div className="h-full flex flex-col">
       {/* Page Header */}
-      <div className="flex items-center justify-between p-8 border-b border-zinc-900 bg-[#09090b]">
+      <div className="flex items-center justify-between p-8 border-b border-zinc-900 ">
         <div className="flex items-center gap-4">
           <Link
             to="/libraries"
@@ -114,7 +144,7 @@ function LibraryVideosPage() {
             </p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 ">
           <div className="flex h-8 bg-zinc-900 border border-zinc-800 rounded-md p-1 gap-1 items-center">
             <button
               onClick={() => setViewMode("list")}
@@ -186,32 +216,38 @@ function LibraryVideosPage() {
             <p className="text-zinc-600 text-sm mt-1">Upload a video to get started</p>
           </div>
         ) : (
-          <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-hidden flex flex-col bg-[#09090b]">
             {viewMode === "list" ? (
               /* List View */
-              <div className="flex-1 overflow-auto">
-                <table className="w-full text-sm text-left border-collapse">
+              <div className="flex-1 overflow-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-800 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-zinc-700">
+                <table className="w-full text-sm text-left border-collapse border-b border-zinc-900 ">
                   <thead className="text-zinc-400 font-medium bg-[#09090b] sticky top-0 z-30 shadow-sm">
                     <tr>
                       <th className="sticky border-r left-0 z-20 bg-[#09090b] px-6 py-3 border-b border-zinc-900 min-w-[350px] max-w-[350px]">
                         Video
                       </th>
-                      <th className="px-6 py-3 border-b border-zinc-900 min-w-[120px] bg-[#09090b]">
+                      <th className="px-4 py-3 border-b border-zinc-900 w-[100px] bg-[#09090b]">
                         Status
                       </th>
-                      <th className="px-6 py-3 border-b border-zinc-900 min-w-[280px] bg-[#09090b]">
+                      <th className="px-2 py-3 border-b border-zinc-900 w-[220px] bg-[#09090b]">
                         ID
                       </th>
-                      <th className="px-6 py-3 border-b border-zinc-900 min-w-[150px] bg-[#09090b]">
+                      <th className="px-2 py-3 border-b border-zinc-900 w-[100px] bg-[#09090b]">
                         Source
                       </th>
-                      <th className="px-6 py-3 border-b border-zinc-900 min-w-[150px] bg-[#09090b]">
+                      <th className="px-2 py-3 border-b border-zinc-900 w-[120px] bg-[#09090b]">
                         Date
                       </th>
-                      <th className="px-6 py-3 border-b border-zinc-900 min-w-[150px] bg-[#09090b]">
+                      <th className="px-2 py-3 border-b border-zinc-900 w-[100px] bg-[#09090b]">
                         Size
                       </th>
-                      <th className="px-6 py-3 border-b border-l border-zinc-900 bg-[#09090b] text-right sticky right-0 z-20">
+                      <th className="px-2 py-3 border-b border-zinc-900 w-[120px] bg-[#09090b]">
+                        Resolution
+                      </th>
+                      <th className="px-2 py-3 border-b border-zinc-900 w-[100px] bg-[#09090b]">
+                        Duration
+                      </th>
+                      <th className="px-2 py-3 border-b border-l border-zinc-900 bg-[#09090b] text-left sticky right-0 z-20">
                         Action
                       </th>
                     </tr>
@@ -249,21 +285,28 @@ function LibraryVideosPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-4">
                           <StatusBadge status={video.status} />
                         </td>
-                        <td className="px-6 py-4 text-zinc-500 font-mono text-xs select-all">
+                        <td className="px-2 py-4 text-zinc-500 font-mono text-xs select-all">
                           {video.id}
                         </td>
-                        <td className="px-6 py-4 text-zinc-400 capitalize">{video.source}</td>
-                        <td className="px-6 py-4 text-zinc-400 tabular-nums">
+                        <td className="px-2 py-4 text-zinc-400 capitalize">{video.source}</td>
+                        <td className="px-2 py-4 text-zinc-400 tabular-nums">
                           {new Date(video.created_at).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 text-zinc-500 font-mono text-xs">
-                          {/* Mock Size */}
-                          -- MB
+                        <td className="px-2 py-4 text-zinc-400 tabular-nums">
+                          {formatBytes(video.file_size_bytes || 0)}
                         </td>
-                        <td className="px-6 py-4 text-right sticky right-0 z-10 bg-[#09090b] border-l border-zinc-900 group-hover:bg-zinc-900">
+                        <td className="px-2 py-4 text-zinc-400 tabular-nums">
+                          {video.resolution_width && video.resolution_height
+                            ? `${video.resolution_width} x ${video.resolution_height}`
+                            : "--"}
+                        </td>
+                        <td className="px-2 py-4 text-zinc-400 tabular-nums">
+                          {formatDuration(video.duration_ms || 0)}
+                        </td>
+                        <td className="px-2 py-4 text-right sticky right-0 z-10 bg-[#09090b] border-l border-zinc-900 group-hover:bg-zinc-900">
                           <div className="flex items-center justify-end gap-3">
                             <Link
                               to="/libraries/$libraryId/video/$videoId"
@@ -320,6 +363,9 @@ function LibraryVideosPage() {
                               </div>
                             </div>
                           )}
+                          <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/70 rounded text-[10px] text-white font-medium">
+                            {formatDuration(video.duration_ms || 0)}
+                          </div>
                         </Link>
                       </div>
                       <div className="p-3">
@@ -345,8 +391,15 @@ function LibraryVideosPage() {
                         </div>
                         <div className="flex justify-between items-center text-xs text-zinc-500">
                           <StatusBadge status={video.status} />
-                          <div className="flex gap-2">
-                            <span>{new Date(video.created_at).toLocaleDateString()}</span>
+                          <div className="flex gap-2 items-center">
+                            {video.resolution_width && video.resolution_height && (
+                              <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
+                                {video.resolution_width} x {video.resolution_height}
+                              </span>
+                            )}
+                            <span title={new Date(video.created_at).toLocaleString()}>
+                              {new Date(video.created_at).toLocaleDateString()}
+                            </span>
                           </div>
                         </div>
                       </div>

@@ -3,18 +3,18 @@ package database
 import "time"
 
 type Video struct {
-	ID               string
-	LibraryID        *string
-	Title            string
-	Description      string
-	Status           string
-	Source           string // "upload", "livestream"
-	DurationMs       *int64
-	FileSizeBytes    *int64
-	ResolutionWidth  *int
-	ResolutionHeight *int
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	ID               string    `json:"id"`
+	LibraryID        *string   `json:"library_id"`
+	Title            string    `json:"title"`
+	Description      string    `json:"description"`
+	Status           string    `json:"status"`
+	Source           string    `json:"source"`
+	DurationMs       *int64    `json:"duration_ms"`
+	FileSizeBytes    *int64    `json:"file_size_bytes"`
+	ResolutionWidth  *int      `json:"resolution_width"`
+	ResolutionHeight *int      `json:"resolution_height"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 // Add new video record
@@ -40,7 +40,7 @@ func (db *DB) UpdateVideoMetadata(id string, durationMs, fileSizeBytes int64, wi
 
 // Return all videos
 func (db *DB) ListVideos() ([]Video, error) {
-	query := `SELECT id, library_id, title, description, status, source, duration_ms, file_size_bytes, resolution_width, resolution_height, created_at, updated_at FROM videos ORDER BY created_at DESC`
+	query := `SELECT id, library_id, title, COALESCE(description, ''), status, source, duration_ms, file_size_bytes, resolution_width, resolution_height, created_at, updated_at FROM videos ORDER BY created_at DESC`
 	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,9 @@ func (db *DB) ListVideos() ([]Video, error) {
 	var videos []Video
 	for rows.Next() {
 		var v Video
-		rows.Scan(&v.ID, &v.LibraryID, &v.Title, &v.Description, &v.Status, &v.Source, &v.DurationMs, &v.FileSizeBytes, &v.ResolutionWidth, &v.ResolutionHeight, &v.CreatedAt, &v.UpdatedAt)
+		if err := rows.Scan(&v.ID, &v.LibraryID, &v.Title, &v.Description, &v.Status, &v.Source, &v.DurationMs, &v.FileSizeBytes, &v.ResolutionWidth, &v.ResolutionHeight, &v.CreatedAt, &v.UpdatedAt); err != nil {
+			return nil, err
+		}
 		videos = append(videos, v)
 	}
 	return videos, nil
@@ -57,7 +59,7 @@ func (db *DB) ListVideos() ([]Video, error) {
 
 // Return videos by library
 func (db *DB) ListVideosByLibrary(libraryID string) ([]Video, error) {
-	query := `SELECT id, library_id, title, description, status, source, duration_ms, file_size_bytes, resolution_width, resolution_height, created_at, updated_at FROM videos WHERE library_id = ? ORDER BY created_at DESC`
+	query := `SELECT id, library_id, title, COALESCE(description, ''), status, source, duration_ms, file_size_bytes, resolution_width, resolution_height, created_at, updated_at FROM videos WHERE library_id = ? ORDER BY created_at DESC`
 	rows, err := db.Query(query, libraryID)
 	if err != nil {
 		return nil, err
@@ -66,7 +68,9 @@ func (db *DB) ListVideosByLibrary(libraryID string) ([]Video, error) {
 	var videos []Video
 	for rows.Next() {
 		var v Video
-		rows.Scan(&v.ID, &v.LibraryID, &v.Title, &v.Description, &v.Status, &v.Source, &v.DurationMs, &v.FileSizeBytes, &v.ResolutionWidth, &v.ResolutionHeight, &v.CreatedAt, &v.UpdatedAt)
+		if err := rows.Scan(&v.ID, &v.LibraryID, &v.Title, &v.Description, &v.Status, &v.Source, &v.DurationMs, &v.FileSizeBytes, &v.ResolutionWidth, &v.ResolutionHeight, &v.CreatedAt, &v.UpdatedAt); err != nil {
+			return nil, err
+		}
 		videos = append(videos, v)
 	}
 	return videos, nil
@@ -74,7 +78,7 @@ func (db *DB) ListVideosByLibrary(libraryID string) ([]Video, error) {
 
 // Returns a single video
 func (db *DB) GetVideo(id string) (*Video, error) {
-	query := `SELECT id, library_id, title, description, status, source, duration_ms, file_size_bytes, resolution_width, resolution_height, created_at, updated_at FROM videos WHERE id = ?`
+	query := `SELECT id, library_id, title, COALESCE(description, ''), status, source, duration_ms, file_size_bytes, resolution_width, resolution_height, created_at, updated_at FROM videos WHERE id = ?`
 	var v Video
 	err := db.QueryRow(query, id).Scan(&v.ID, &v.LibraryID, &v.Title, &v.Description, &v.Status, &v.Source, &v.DurationMs, &v.FileSizeBytes, &v.ResolutionWidth, &v.ResolutionHeight, &v.CreatedAt, &v.UpdatedAt)
 	if err != nil {
