@@ -3,6 +3,7 @@ package api
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"path"
@@ -40,13 +41,38 @@ func (s *Server) handleListVideos(c *gin.Context) {
 func (s *Server) handleGetVideoDetails(c *gin.Context) {
 	videoID := c.Param("videoId")
 
-	playbackURL := fmt.Sprintf("%s/v1/videos/%s/playback/hls/master.m3u8", s.Config.BaseURL, videoID)
+	video, err := s.DB.GetVideo(videoID)
+	if err != nil || video == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Video not found"})
+		return
+	}
+
+	playbackURL := fmt.Sprintf("/v1/videos/%s/playback/hls/master.m3u8", videoID)
+	thumbnailURL := fmt.Sprintf("/v1/videos/%s/thumbnail/320", videoID)
+	subtitleURL := fmt.Sprintf("/v1/videos/%s/subtitles", videoID)
+
+	progress := 0
+	job, err := s.DB.GetLatestJobByVideoID(videoID)
+	if err == nil && job != nil {
+		progress = job.Progress
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"videoId":     videoID,
-		"status":      "PROCESSED",
-		"title":       "My Awesome Video",
-		"playbackUrl": playbackURL,
+		"id":                video.ID,
+		"library_id":        video.LibraryID,
+		"title":             video.Title,
+		"description":       video.Description,
+		"status":            video.Status,
+		"source":            video.Source,
+		"duration_ms":       video.DurationMs,
+		"file_size_bytes":   video.FileSizeBytes,
+		"resolution_width":  video.ResolutionWidth,
+		"resolution_height": video.ResolutionHeight,
+		"created_at":        video.CreatedAt,
+		"playback_url":      playbackURL,
+		"thumbnail_url":     thumbnailURL,
+		"subtitle_url":      subtitleURL,
+		"progress":          progress,
 	})
 }
 
@@ -167,12 +193,16 @@ func (s *Server) handleGetSubtitles(c *gin.Context) {
 	videoID := c.Param("videoId")
 	objectKey := fmt.Sprintf("%s/subtitles/subtitles.vtt", videoID)
 
-	presigned, err := s.Storage.GeneratePresignedGet(c.Request.Context(), objectKey, time.Hour)
+	content, err := s.Storage.GetObject(c.Request.Context(), objectKey)
 	if err != nil {
-		log.Printf("Error generating presigned URL for subtitles %s: %v", objectKey, err)
+		log.Printf("Error retrieving subtitles %s: %v", objectKey, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Subtitles not found"})
 		return
 	}
+	defer content.Close()
 
-	c.Redirect(http.StatusTemporaryRedirect, presigned.URL)
+	c.Header("Content-Type", "text/vtt")
+	if _, err := io.Copy(c.Writer, content); err != nil {
+		log.Printf("Error streaming subtitles: %v", err)
+	}
 }

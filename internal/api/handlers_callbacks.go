@@ -41,7 +41,7 @@ func (s *Server) handleWorkerStatusUpdate(c *gin.Context) {
 	jobID := c.Param("jobId")
 
 	var req struct {
-		Status string  `json:"status"` // "playable", "completed", "failed"
+		Status string  `json:"status"` // "playable", "ready", "failed"
 		Error  *string `json:"error"`
 	}
 
@@ -57,12 +57,7 @@ func (s *Server) handleWorkerStatusUpdate(c *gin.Context) {
 
 	job, err := s.DB.GetJob(jobID)
 	if err == nil && job != nil {
-		switch req.Status {
-		case "completed":
-			s.DB.UpdateVideoStatus(job.VideoID, "ready")
-		case "failed":
-			s.DB.UpdateVideoStatus(job.VideoID, "failed")
-		}
+		s.DB.UpdateVideoStatus(job.VideoID, req.Status)
 	}
 
 	log.Printf("[%s] Worker reported status: %s", jobID, req.Status)

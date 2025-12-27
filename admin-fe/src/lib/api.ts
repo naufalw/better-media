@@ -27,6 +27,12 @@ export const api = {
     return res.json();
   },
 
+  async getVideo(id: string) {
+    const res = await fetchWithAuth(`${API_BASE}/v1/videos/${id}`);
+    if (!res.ok) throw new Error("Failed to fetch video");
+    return res.json();
+  },
+
   async deleteVideo(id: string) {
     const res = await fetchWithAuth(`${API_BASE}/v1/videos/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Failed to delete video");
