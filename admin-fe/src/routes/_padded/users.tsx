@@ -55,131 +55,133 @@ function UsersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="h-full flex flex-col">
+      <div className="flex items-center justify-between pb-4 border-b border-zinc-900">
         <div>
-          <h1 className="text-2xl font-semibold text-white tracking-tight">User Management</h1>
-          <p className="text-sm text-zinc-400 mt-1">Manage system access and roles</p>
+          <h1 className="text-xl font-semibold text-white">User Management</h1>
+          <p className="text-sm text-zinc-500 mt-1">Manage system access and roles</p>
         </div>
         <button
           onClick={() => setIsCreateOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-black bg-emerald-500 hover:bg-emerald-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-black bg-emerald-500 hover:bg-emerald-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-sm"
         >
           <UserPlus className="w-4 h-4" />
           Add User
         </button>
       </div>
 
-      {isCreateOpen && (
-        <div className="p-4 border border-zinc-800 bg-zinc-900/50 space-y-4">
-          <h2 className="text-lg font-medium text-white">Create New User</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-400">Name</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="flex h-10 w-full bg-[#0c0c0e] border border-zinc-800 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                  required
-                />
+      <div className="flex-1 overflow-auto py-8">
+        {isCreateOpen && (
+          <div className="p-4 border border-zinc-800 bg-zinc-900/50 space-y-4 mb-6">
+            <h2 className="text-lg font-medium text-white">Create New User</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-400">Name</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="flex h-10 w-full bg-[#0c0c0e] border border-zinc-800 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-400">Email</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="flex h-10 w-full bg-[#0c0c0e] border border-zinc-800 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-400">Password</label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="flex h-10 w-full bg-[#0c0c0e] border border-zinc-800 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                    required
+                    minLength={8}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-400">Email</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="flex h-10 w-full bg-[#0c0c0e] border border-zinc-800 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                  required
-                />
+              {error && <div className="text-sm text-red-400">{error}</div>}
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={createMutation.isPending}
+                  className="px-4 py-2 text-sm font-medium text-black bg-emerald-500 hover:bg-emerald-400"
+                >
+                  {createMutation.isPending ? "Creating..." : "Create User"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white bg-transparent border border-zinc-800 hover:bg-zinc-800"
+                >
+                  Cancel
+                </button>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-400">Password</label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="flex h-10 w-full bg-[#0c0c0e] border border-zinc-800 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                  required
-                  minLength={8}
-                />
-              </div>
-            </div>
-            {error && <div className="text-sm text-red-400">{error}</div>}
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={createMutation.isPending}
-                className="px-4 py-2 text-sm font-medium text-black bg-emerald-500 hover:bg-emerald-400"
-              >
-                {createMutation.isPending ? "Creating..." : "Create User"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsCreateOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white bg-transparent border border-zinc-800 hover:bg-zinc-800"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+            </form>
+          </div>
+        )}
 
-      {/* Users Table */}
-      <div className="border border-zinc-800 overflow-hidden">
-        <table className="w-full text-sm text-left">
-          <thead className="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
-            <tr>
-              <th className="px-6 py-3">User</th>
-              <th className="px-6 py-3">Role</th>
-              <th className="px-6 py-3">Created</th>
-              <th className="px-6 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-800">
-            {data?.users?.map((u: any) => (
-              <tr key={u.id} className="hover:bg-zinc-900/50 transition-colors">
-                <td className="px-6 py-4">
-                  <div className="flex flex-col">
-                    <span className="font-medium text-white">{u.name}</span>
-                    <span className="text-zinc-500">{u.email}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    {u.role === "admin" ? (
-                      <Shield className="w-4 h-4 text-emerald-500" />
-                    ) : (
-                      <User className="w-4 h-4 text-zinc-500" />
-                    )}
-                    <span className="capitalize text-zinc-300">{u.role}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-zinc-500">
-                  {new Date(u.created_at).toLocaleDateString()}
-                </td>
-                <td className="px-6 py-4 text-right">
-                  {currentUser?.id !== u.id && (
-                    <button
-                      onClick={() => {
-                        if (confirm("Are you sure you want to delete this user?")) {
-                          deleteMutation.mutate(u.id);
-                        }
-                      }}
-                      className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                      title="Delete User"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </td>
+        {/* Users Table */}
+        <div className="border border-zinc-800 overflow-hidden rounded-sm">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-zinc-400 uppercase bg-zinc-900/50 border-b border-zinc-800">
+              <tr>
+                <th className="px-6 py-3 font-medium">User</th>
+                <th className="px-6 py-3 font-medium">Role</th>
+                <th className="px-6 py-3 font-medium">Created</th>
+                <th className="px-6 py-3 text-right font-medium">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-zinc-800">
+              {data?.users?.map((u: any) => (
+                <tr key={u.id} className="hover:bg-zinc-900/50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="font-medium text-zinc-200">{u.name}</span>
+                      <span className="text-zinc-500">{u.email}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      {u.role === "admin" ? (
+                        <Shield className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <User className="w-4 h-4 text-zinc-500" />
+                      )}
+                      <span className="capitalize text-zinc-300">{u.role}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-zinc-500 font-mono text-xs">
+                    {new Date(u.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    {currentUser?.id !== u.id && (
+                      <button
+                        onClick={() => {
+                          if (confirm("Are you sure you want to delete this user?")) {
+                            deleteMutation.mutate(u.id);
+                          }
+                        }}
+                        className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 transition-colors rounded-sm"
+                        title="Delete User"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

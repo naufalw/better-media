@@ -11,6 +11,8 @@ import {
   Menu,
   Loader2,
   Users,
+  LogOut,
+  Github,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "../lib/auth";
@@ -37,7 +39,7 @@ function RootComponent() {
 
 function AppContent() {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -155,6 +157,18 @@ function AppContent() {
 
         {/* Footer Navigation */}
         <div className="p-2 border-t border-[#1f1f1f]">
+          <a
+            href="https://github.com/naufalw/better-media"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex items-center gap-3 px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-900/50 transition-colors mb-2 ${
+              isCollapsed ? "justify-center px-0" : ""
+            }`}
+            title="Star on Github"
+          >
+            <Github className="w-4 h-4" />
+            {!isCollapsed && <span>Star on Github</span>}
+          </a>
           <Link
             to="/settings"
             className={`flex items-center gap-3 px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-900/50 transition-colors ${
@@ -173,6 +187,19 @@ function AppContent() {
               </div>
             )}
           </Link>
+          <button
+            onClick={() => {
+              logout();
+              navigate({ to: "/login" });
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-900/10 transition-colors mt-1 ${
+              isCollapsed ? "justify-center px-0" : ""
+            }`}
+            title="Log Out"
+          >
+            <LogOut className="w-4 h-4" />
+            {!isCollapsed && <span>Log Out</span>}
+          </button>
         </div>
       </aside>
 

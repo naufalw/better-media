@@ -28,8 +28,8 @@ function LoginComponent() {
   }
 
   const loginMutation = useMutation({
-    mutationFn: async () => {
-      return api.login(email, password);
+    mutationFn: async (credentials: any) => {
+      return api.login(credentials.email, credentials.password);
     },
     onSuccess: (data) => {
       login(data.token, data.user);
@@ -43,7 +43,7 @@ function LoginComponent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorString("");
-    loginMutation.mutate();
+    loginMutation.mutate({ email, password });
   };
 
   return (
