@@ -84,9 +84,9 @@ const LibrariesLibraryIdIndexRoute = LibrariesLibraryIdIndexRouteImport.update({
 } as any)
 const LibrariesLibraryIdVideoVideoIdRoute =
   LibrariesLibraryIdVideoVideoIdRouteImport.update({
-    id: '/video/$videoId',
-    path: '/video/$videoId',
-    getParentRoute: () => LibrariesLibraryIdRoute,
+    id: '/libraries/$libraryId/video/$videoId',
+    path: '/libraries/$libraryId/video/$videoId',
+    getParentRoute: () => rootRouteImport,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -185,6 +185,7 @@ export interface RootRouteChildren {
   SetupRoute: typeof SetupRoute
   VideoRoute: typeof VideoRouteWithChildren
   LibrariesLibraryIdIndexRoute: typeof LibrariesLibraryIdIndexRoute
+  LibrariesLibraryIdVideoVideoIdRoute: typeof LibrariesLibraryIdVideoVideoIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -275,10 +276,10 @@ declare module '@tanstack/react-router' {
     }
     '/libraries/$libraryId/video/$videoId': {
       id: '/libraries/$libraryId/video/$videoId'
-      path: '/video/$videoId'
+      path: '/libraries/$libraryId/video/$videoId'
       fullPath: '/libraries/$libraryId/video/$videoId'
       preLoaderRoute: typeof LibrariesLibraryIdVideoVideoIdRouteImport
-      parentRoute: typeof LibrariesLibraryIdRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -320,6 +321,7 @@ const rootRouteChildren: RootRouteChildren = {
   SetupRoute: SetupRoute,
   VideoRoute: VideoRouteWithChildren,
   LibrariesLibraryIdIndexRoute: LibrariesLibraryIdIndexRoute,
+  LibrariesLibraryIdVideoVideoIdRoute: LibrariesLibraryIdVideoVideoIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

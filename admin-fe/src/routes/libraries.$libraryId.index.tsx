@@ -219,7 +219,7 @@ function LibraryVideosPage() {
           <div className="flex-1 overflow-hidden flex flex-col bg-[#09090b]">
             {viewMode === "list" ? (
               /* List View */
-              (<div className="flex-1 overflow-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-800 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-zinc-700">
+              <div className="flex-1 overflow-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-800 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-zinc-700">
                 <table className="w-full text-sm text-left border-collapse border-b border-zinc-900 ">
                   <thead className="text-zinc-400 font-medium bg-[#09090b] sticky top-0 z-30 shadow-sm">
                     <tr>
@@ -333,10 +333,10 @@ function LibraryVideosPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>)
+              </div>
             ) : (
               /* Grid View */
-              (<div className="p-6 overflow-auto bg-[#09090b]">
+              <div className="p-6 overflow-auto bg-[#09090b]">
                 <div className="grid grid-cols-2  md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-6">
                   {videos.map((video) => (
                     <div
@@ -406,13 +406,13 @@ function LibraryVideosPage() {
                     </div>
                   ))}
                 </div>
-              </div>)
+              </div>
             )}
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }
 
 function StatusBadge({ status }: { status: string }) {
