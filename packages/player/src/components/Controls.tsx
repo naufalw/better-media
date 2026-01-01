@@ -1,0 +1,221 @@
+import { useState } from "react";
+
+interface ControlsProps {
+  state: {
+    isPlaying: boolean;
+    currentTime: number;
+    duration: number;
+    volume: number;
+    isMuted: boolean;
+    isFullscreen: boolean;
+    buffered: number;
+    playbackRate: number;
+  };
+  actions: {
+    toggle: () => void;
+    seek: (time: number) => void;
+    setVolume: (level: number) => void;
+    toggleMute: () => void;
+    toggleFullscreen: () => void;
+    setSpeed: (rate: number) => void;
+  };
+}
+
+export function Controls({ state, actions }: ControlsProps) {
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
+  const progress = state.duration ? (state.currentTime / state.duration) * 100 : 0;
+  const bufferedPercent = state.duration ? (state.buffered / state.duration) * 100 : 0;
+
+  return (
+    <div className="bm-controls">
+      {/* Progress bar */}
+      <div
+        className="bm-progress-container"
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const percent = (e.clientX - rect.left) / rect.width;
+          actions.seek(percent * state.duration);
+        }}
+      >
+        <div className="bm-progress-buffered" style={{ width: `${bufferedPercent}%` }} />
+        <div className="bm-progress-bar" style={{ width: `${progress}%` }} />
+      </div>
+
+      <div className="bm-controls-row">
+        {/* Play/Pause */}
+        <button className="bm-control-btn" onClick={actions.toggle}>
+          {state.isPlaying ? <PauseIcon /> : <PlayIcon />}
+        </button>
+
+        {/* Volume */}
+        <button className="bm-control-btn" onClick={actions.toggleMute}>
+          {state.isMuted ? <MutedIcon /> : <VolumeIcon />}
+        </button>
+
+        {/* Time */}
+        <span className="bm-time">
+          {formatTime(state.currentTime)} / {formatTime(state.duration)}
+        </span>
+
+        {/* Spacer */}
+        <div className="bm-spacer" />
+
+        {/* Playback speed */}
+        <div className="bm-menu-container">
+          <button className="bm-control-btn" onClick={() => setShowSpeedMenu(!showSpeedMenu)}>
+            {state.playbackRate}x
+          </button>
+
+          {showSpeedMenu && (
+            <div className="bm-menu">
+              {speeds.map((speed) => (
+                <button
+                  key={speed}
+                  className={`bm-menu-item ${state.playbackRate === speed ? "active" : ""}`}
+                  onClick={() => {
+                    actions.setSpeed(speed);
+                    setShowSpeedMenu(false);
+                  }}
+                >
+                  {speed}x
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Fullscreen */}
+
+        <button className="bm-control-btn" onClick={actions.toggleFullscreen}>
+          {state.isFullscreen ? <ExitFullscreenIcon /> : <FullscreenIcon />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const PlayIcon = () => (
+  // lucide play
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="lucide lucide-play-icon lucide-play"
+  >
+    <path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" />
+  </svg>
+);
+
+const PauseIcon = () => (
+  // lucide pause
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="lucide lucide-pause-icon lucide-pause"
+  >
+    <rect x="14" y="3" width="5" height="18" rx="1" />
+    <rect x="5" y="3" width="5" height="18" rx="1" />
+  </svg>
+);
+
+const VolumeIcon = () => (
+  // lucide volume 2
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="lucide lucide-volume2-icon lucide-volume-2"
+  >
+    <path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" />
+    <path d="M16 9a5 5 0 0 1 0 6" />
+    <path d="M19.364 18.364a9 9 0 0 0 0-12.728" />
+  </svg>
+);
+
+const MutedIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="lucide lucide-volume-x-icon lucide-volume-x"
+  >
+    <path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" />
+    <line x1="22" x2="16" y1="9" y2="15" />
+    <line x1="16" x2="22" y1="9" y2="15" />
+  </svg>
+);
+
+const FullscreenIcon = () => (
+  // this is lucide maximize
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="lucide lucide-maximize-icon lucide-maximize"
+  >
+    <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+    <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+    <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+    <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+  </svg>
+);
+
+const ExitFullscreenIcon = () => (
+  // lucide minimize
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="lucide lucide-minimize-icon lucide-minimize"
+  >
+    <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+    <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+    <path d="M3 16h3a2 2 0 0 1 2 2v3" />
+    <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+  </svg>
+);

@@ -30,5 +30,9 @@
   },
   "overrides": {
     "vite": "npm:rolldown-vite@7.2.5"
+  },
+  "dependencies": {
+    "hls.js": "^1.6.15",
+    "lucide-react": "^0.562.0"
   }
 }
