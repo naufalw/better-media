@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { PaddedLayout } from "@/components/padded-layout";
+import { Player } from "@better-media/player";
+import "@better-media/player/styles";
 
 export const Route = createFileRoute("/libraries/$libraryId/video/$videoId")({
   component: VideoDetailPage,
@@ -122,23 +124,13 @@ function VideoDetailPage() {
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-black border border-zinc-800 rounded-lg overflow-hidden aspect-video relative group">
               {["playable", "completed", "ready"].includes(video.status) ? (
-                <video
-                  controls
-                  autoPlay
-                  className="w-full h-full"
+                <Player
                   src={`${API_BASE}${video.playback_url}`}
                   poster={`${API_BASE}${video.thumbnail_url}`}
-                >
-                  {video.subtitle_url && transcription && (
-                    <track
-                      kind="subtitles"
-                      src={URL.createObjectURL(new Blob([transcription], { type: "text/vtt" }))}
-                      srcLang="en"
-                      label="English"
-                      default
-                    />
-                  )}
-                </video>
+                  subtitleUrl={video.subtitle_url ? `${API_BASE}${video.subtitle_url}` : undefined}
+                  theme="dark"
+                  accentColor="#10b981"
+                />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
                   <div className="text-center w-full max-w-md px-6">

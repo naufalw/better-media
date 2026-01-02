@@ -4,3 +4,6 @@ data/
 web-tester/*
 cmd/api/dist
 .DS_Store
+
+index.html
+node_modules/
