@@ -1,3 +1,85 @@
+/* Video element */
+.bm-player-video {
+    width: 100%;
+    display: block;
+}
+
+/* Show controls on hover */
+.bm-player:hover .bm-controls {
+    opacity: 1;
+}
+
+/* Controls row layout */
+.bm-controls-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: nowrap;
+}
+
+/* Spacer */
+.bm-spacer {
+    flex: 1;
+}
+
+/* Loader */
+.bm-player-loader {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+/* Spin animation */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Volume container */
+.bm-volume-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+}
+
+.bm-volume-slider {
+    display: flex;
+    align-items: center;
+    width: 80px;
+}
+
+/* Menu container */
+.bm-menu-container {
+    position: relative;
+}
+
+/* Menu back button */
+.bm-menu-back {
+    justify-content: flex-start;
+    gap: 8px;
+    font-weight: 500;
+}
+
+/* Firefox range thumb */
+.bm-volume-slider input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: var(--bm-accent);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+/* Control button hover */
+.bm-control-btn:hover {
+    opacity: 1;
+}
+
 .bm-player {
     --bm-accent: #10b981;
     --bm-radius: 0px;
