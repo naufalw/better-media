@@ -1,7 +1,9 @@
 /* Video element */
 .bm-player-video {
     width: 100%;
+    height: 100%;
     display: block;
+    object-fit: contain;
 }
 
 /* Show controls on hover */
@@ -96,6 +98,7 @@
 
     position: relative;
     width: 100%;
+    height: 100%;
     background: var(--bm-bg);
     overflow: hidden;
     border-radius: var(--bm-radius);
