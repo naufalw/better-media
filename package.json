@@ -1,0 +1,11 @@
+{
+  "name": "better-media",
+  "private": true,
+  "workspaces": [
+    "admin-fe",
+    "packages/*"
+  ],
+  "scripts": {
+    "build:frontend": "./scripts/build-frontend.sh"
+  }
+}

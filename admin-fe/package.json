@@ -9,6 +9,7 @@
     "start": "vite"
   },
   "dependencies": {
+    "@better-media/player": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-slot": "^1.2.4",
     "@tailwindcss/vite": "^4.1.18",
