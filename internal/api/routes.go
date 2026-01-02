@@ -37,6 +37,9 @@ func (s *Server) registerRoutes() {
 	v1.POST("/callbacks/:jobId/progress", s.handleWorkerProgressUpdate)
 	v1.POST("/callbacks/:jobId/metadata", s.handleWorkerMetadataUpdate)
 
+	// embed
+	v1.GET("/embed/:videoId", s.handleEmbed)
+
 	// PROTECTED
 	protected := v1.Group("/")
 	protected.Use(middleware.RequireAuth(s.JWT))
@@ -102,4 +105,5 @@ func (s *Server) registerRoutes() {
 
 		c.String(http.StatusNotFound, "Page not found")
 	})
+
 }
