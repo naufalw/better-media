@@ -10,6 +10,11 @@ interface ControlsProps {
     isFullscreen: boolean;
     buffered: number;
     playbackRate: number;
+    qualities: {
+      height: number;
+      index: number;
+    }[];
+    currentQuality: number;
   };
   actions: {
     toggle: () => void;
@@ -18,6 +23,7 @@ interface ControlsProps {
     toggleMute: () => void;
     toggleFullscreen: () => void;
     setSpeed: (rate: number) => void;
+    setQuality: (levelIndex: number) => void;
   };
 }
 
@@ -27,12 +33,17 @@ export function Controls({ state, actions }: ControlsProps) {
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
-
-  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<"main" | "speed" | "quality">("main");
 
   const progress = state.duration ? (state.currentTime / state.duration) * 100 : 0;
   const bufferedPercent = state.duration ? (state.buffered / state.duration) * 100 : 0;
+
+  const closeSettings = () => {
+    setShowSettings(false);
+    setSettingsTab("main");
+  };
 
   return (
     <div className="bm-controls">
@@ -68,32 +79,99 @@ export function Controls({ state, actions }: ControlsProps) {
         {/* Spacer */}
         <div className="bm-spacer" />
 
-        {/* Playback speed */}
+        {/* Settings */}
         <div className="bm-menu-container">
-          <button className="bm-control-btn" onClick={() => setShowSpeedMenu(!showSpeedMenu)}>
-            {state.playbackRate}x
+          <button className="bm-control-btn" onClick={() => setShowSettings(!showSettings)}>
+            <SettingsIcon />
           </button>
 
-          {showSpeedMenu && (
+          {showSettings && (
             <div className="bm-menu">
-              {speeds.map((speed) => (
-                <button
-                  key={speed}
-                  className={`bm-menu-item ${state.playbackRate === speed ? "active" : ""}`}
-                  onClick={() => {
-                    actions.setSpeed(speed);
-                    setShowSpeedMenu(false);
-                  }}
-                >
-                  {speed}x
-                </button>
-              ))}
+              {settingsTab === "main" && (
+                <>
+                  <button
+                    className="bm-menu-item bm-menu-item-nav"
+                    onClick={() => setSettingsTab("speed")}
+                  >
+                    <span>Speed</span>
+                    <span className="bm-menu-value">{state.playbackRate}x</span>
+                  </button>
+                  <button
+                    className="bm-menu-item bm-menu-item-nav"
+                    onClick={() => setSettingsTab("quality")}
+                  >
+                    <span>Quality</span>
+                    <span className="bm-menu-value">
+                      {state.currentQuality === -1
+                        ? "Auto"
+                        : `${state.qualities.find((q) => q.index === state.currentQuality)?.height}p`}
+                    </span>
+                  </button>
+                </>
+              )}
+
+              {settingsTab === "speed" && (
+                <>
+                  <button
+                    className="bm-menu-item bm-menu-back"
+                    onClick={() => setSettingsTab("main")}
+                  >
+                    <ChevronLeftIcon />
+                    <span>Speed</span>
+                  </button>
+                  <div className="bm-menu-divider" />
+                  {speeds.map((speed) => (
+                    <button
+                      key={speed}
+                      className={`bm-menu-item ${state.playbackRate === speed ? "active" : ""}`}
+                      onClick={() => {
+                        actions.setSpeed(speed);
+                        closeSettings();
+                      }}
+                    >
+                      {speed}x
+                    </button>
+                  ))}
+                </>
+              )}
+
+              {settingsTab === "quality" && (
+                <>
+                  <button
+                    className="bm-menu-item bm-menu-back"
+                    onClick={() => setSettingsTab("main")}
+                  >
+                    <ChevronLeftIcon /> Quality
+                  </button>
+                  <div className="bm-menu-divider" />
+                  <button
+                    className={`bm-menu-item ${state.currentQuality === -1 ? "active" : ""}`}
+                    onClick={() => {
+                      actions.setQuality(-1);
+                      closeSettings();
+                    }}
+                  >
+                    Auto
+                  </button>
+                  {state.qualities.map((q) => (
+                    <button
+                      key={q.index}
+                      className={`bm-menu-item ${state.currentQuality === q.index ? "active" : ""}`}
+                      onClick={() => {
+                        actions.setQuality(q.index);
+                        closeSettings();
+                      }}
+                    >
+                      {q.height}p
+                    </button>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </div>
 
         {/* Fullscreen */}
-
         <button className="bm-control-btn" onClick={actions.toggleFullscreen}>
           {state.isFullscreen ? <ExitFullscreenIcon /> : <FullscreenIcon />}
         </button>
@@ -217,5 +295,40 @@ const ExitFullscreenIcon = () => (
     <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
     <path d="M3 16h3a2 2 0 0 1 2 2v3" />
     <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+  </svg>
+);
+
+const SettingsIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="lucide lucide-settings-icon lucide-settings"
+  >
+    <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const ChevronLeftIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="lucide lucide-chevron-left-icon lucide-chevron-left"
+  >
+    <path d="m15 18-6-6 6-6" />
   </svg>
 );

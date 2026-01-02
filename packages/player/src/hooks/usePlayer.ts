@@ -26,6 +26,9 @@ export function usePlayer(options: UsePlayerOptions) {
   const [isLoading, setIsLoading] = useState(true);
   const [playbackRate, setPlaybackRate] = useState(1);
 
+  const [qualities, setQualities] = useState<{ height: number; index: number }[]>([]);
+  const [currentQuality, setCurrentQuality] = useState(-1);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !options.src) return;
@@ -38,6 +41,13 @@ export function usePlayer(options: UsePlayerOptions) {
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        const levels = hls.levels.map((level, index) => ({
+          height: level.height,
+          index,
+        }));
+        setQualities(levels);
+        setIsLoading(false);
+
         setIsLoading(false);
         if (options.autoPlay) video.play();
       });
@@ -119,6 +129,13 @@ export function usePlayer(options: UsePlayerOptions) {
     if (videoRef.current) videoRef.current.currentTime = time;
   }, []);
 
+  const setQuality = useCallback((levelIndex: number) => {
+    if (hlsRef.current) {
+      hlsRef.current.currentLevel = levelIndex;
+      setCurrentQuality(levelIndex);
+    }
+  }, []);
+
   const setSpeed = useCallback((rate: number) => {
     if (videoRef.current) {
       videoRef.current.playbackRate = rate;
@@ -165,6 +182,8 @@ export function usePlayer(options: UsePlayerOptions) {
       buffered,
       isLoading,
       playbackRate,
+      qualities,
+      currentQuality,
     },
     actions: {
       play,
@@ -175,6 +194,7 @@ export function usePlayer(options: UsePlayerOptions) {
       toggleMute,
       toggleFullscreen,
       setSpeed,
+      setQuality,
     },
   };
 }

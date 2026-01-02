@@ -155,9 +155,11 @@
 }
 
 .bm-menu-item {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     width: 100%;
-    padding: 8px 16px;
+    padding: 10px 16px;
     background: none;
     border: none;
     color: white;
@@ -165,7 +167,9 @@
     cursor: pointer;
     font-size: 14px;
     font-family: system-ui, sans-serif;
+    gap: 12px;
 }
+
 
 .bm-menu-item:hover {
     background: rgba(255, 255, 255, 0.1);
@@ -173,4 +177,23 @@
 
 .bm-menu-item.active {
     color: var(--bm-accent);
+}
+
+.bm-menu-item-nav .bm-menu-value {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+}
+
+.bm-menu-back {
+    display: flex;
+    justify-content: flex-center;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.bm-menu-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 4px 0;
 }
