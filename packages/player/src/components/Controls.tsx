@@ -43,6 +43,8 @@ export function Controls({ state, actions }: ControlsProps) {
   const progress = state.duration ? (state.currentTime / state.duration) * 100 : 0;
   const bufferedPercent = state.duration ? (state.buffered / state.duration) * 100 : 0;
 
+  const [showVolume, setShowVolume] = useState(false);
+
   const closeSettings = () => {
     setShowSettings(false);
     setSettingsTab("main");
@@ -70,9 +72,29 @@ export function Controls({ state, actions }: ControlsProps) {
         </button>
 
         {/* Volume */}
-        <button className="bm-control-btn" onClick={actions.toggleMute}>
-          {state.isMuted ? <MutedIcon /> : <VolumeIcon />}
-        </button>
+        <div
+          className="bm-volume-container"
+          onMouseEnter={() => setShowVolume(true)}
+          onMouseLeave={() => setShowVolume(false)}
+        >
+          <button className="bm-control-btn" onClick={actions.toggleMute}>
+            {state.isMuted || state.volume === 0 ? <MutedIcon /> : <VolumeIcon />}
+          </button>
+
+          {showVolume && (
+            <div className="bm-volume-slider">
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                style={{ "--volume": state.isMuted ? 0 : state.volume } as React.CSSProperties}
+                value={state.isMuted ? 0 : state.volume}
+                onChange={(e) => actions.setVolume(parseFloat(e.target.value))}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Time */}
         <span className="bm-time">
