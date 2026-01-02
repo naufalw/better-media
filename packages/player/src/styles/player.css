@@ -51,6 +51,10 @@
     transition: opacity 0.2s;
 }
 
+.bm-control-btn.active {
+    color: var(--bm-accent);
+}
+
 .bm-player:hover .bm-controls {
     opacity: 1;
 }

@@ -29,6 +29,11 @@ export function usePlayer(options: UsePlayerOptions) {
   const [qualities, setQualities] = useState<{ height: number; index: number }[]>([]);
   const [currentQuality, setCurrentQuality] = useState(-1);
 
+  const [captionsEnabled, setCaptionsEnabled] = useState(false);
+  const [captionTracks, setCaptionTracks] = useState<
+    { label: string; lang: string; src: string }[]
+  >([]);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !options.src) return;
@@ -119,6 +124,31 @@ export function usePlayer(options: UsePlayerOptions) {
   }, []);
 
   // action defintion
+  const loadCaptions = useCallback((tracks: { label: string; lang: string; src: string }[]) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    while (video.firstChild) {
+      if (video.firstChild.nodeName === "TRACK") {
+        video.removeChild(video.firstChild);
+      } else {
+        break;
+      }
+    }
+
+    tracks.forEach((t, i) => {
+      const track = document.createElement("track");
+      track.kind = "subtitles";
+      track.label = t.label;
+      track.srclang = t.lang;
+      track.src = t.src;
+      if (i === 0) track.default = true;
+      video.appendChild(track);
+    });
+
+    setCaptionTracks(tracks);
+  }, []);
+
   const play = useCallback(() => videoRef.current?.play(), []);
   const pause = useCallback(() => videoRef.current?.pause(), []);
   const toggle = useCallback(() => {
@@ -148,6 +178,16 @@ export function usePlayer(options: UsePlayerOptions) {
       videoRef.current.volume = level;
       setVolume(level);
     }
+  }, []);
+
+  const toggleCaptions = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || video.textTracks.length === 0) return;
+
+    const track = video.textTracks[0];
+    const newMode = track.mode === "showing" ? "hidden" : "showing";
+    track.mode = newMode;
+    setCaptionsEnabled(newMode === "showing");
   }, []);
 
   const toggleMute = useCallback(() => {
@@ -182,8 +222,12 @@ export function usePlayer(options: UsePlayerOptions) {
       buffered,
       isLoading,
       playbackRate,
+
       qualities,
       currentQuality,
+
+      captionsEnabled,
+      captionTracks,
     },
     actions: {
       play,
@@ -195,6 +239,9 @@ export function usePlayer(options: UsePlayerOptions) {
       toggleFullscreen,
       setSpeed,
       setQuality,
+
+      loadCaptions,
+      toggleCaptions,
     },
   };
 }

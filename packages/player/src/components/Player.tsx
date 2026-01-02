@@ -1,6 +1,7 @@
 import { usePlayer } from "../hooks/usePlayer";
 import { Controls } from "./Controls";
 import "../styles/player.css";
+import { useEffect } from "react";
 
 export interface PlayerProps {
   src: string;
@@ -18,6 +19,8 @@ export interface PlayerProps {
   onEnded?: () => void;
   onTimeUpdate?: (time: number) => void;
   onError?: (error: Error) => void;
+
+  subtitleUrl?: string;
 }
 
 export function Player({
@@ -34,6 +37,7 @@ export function Player({
   onEnded,
   onTimeUpdate,
   onError,
+  subtitleUrl,
 }: PlayerProps) {
   const { videoRef, state, actions } = usePlayer({
     src,
@@ -45,6 +49,12 @@ export function Player({
     onTimeUpdate,
     onError,
   });
+
+  useEffect(() => {
+    if (subtitleUrl && !state.isLoading) {
+      actions.loadCaptions([{ label: "English", lang: "en", src: subtitleUrl }]);
+    }
+  }, [subtitleUrl, state.isLoading]);
 
   return (
     <div
@@ -61,6 +71,7 @@ export function Player({
         className="bm-player-video"
         poster={poster}
         playsInline
+        crossOrigin="anonymous"
         onClick={actions.toggle}
       />
 
